@@ -78,7 +78,8 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
     model: "gpt-4-turbo-preview",
-    prompt: "You are a helpful AI assistant.",
+    prompt:
+      "You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.",
     temperature: 0.5,
     contextLength: 4000,
     includeProfileContext: true,

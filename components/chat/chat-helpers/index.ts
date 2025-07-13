@@ -10,6 +10,7 @@ import {
   adaptMessagesForGoogleGemini
 } from "@/lib/build-prompt"
 import { consumeReadableStream } from "@/lib/consume-stream"
+import { generateModelUsage } from "@/lib/utils"
 import { Tables, TablesInsert } from "@/supabase/types"
 import {
   ChatFile,
@@ -208,9 +209,12 @@ export const handleHostedChat = async (
 
   let draftMessages = await buildFinalMessages(payload, profile, chatImages)
 
-  let formattedMessages : any[] = []
+  let formattedMessages: any[] = []
   if (provider === "google") {
-    formattedMessages = await adaptMessagesForGoogleGemini(payload, draftMessages)
+    formattedMessages = await adaptMessagesForGoogleGemini(
+      payload,
+      draftMessages
+    )
   } else {
     formattedMessages = draftMessages
   }
@@ -289,6 +293,7 @@ export const processResponse = async (
 ) => {
   let fullText = ""
   let contentToAdd = ""
+  let usageInfo: any = null
 
   if (response.body) {
     await consumeReadableStream(
@@ -298,13 +303,33 @@ export const processResponse = async (
         setToolInUse("none")
 
         try {
+          // Check if this chunk contains usage information
+          if (chunk.includes('"type":"usage"')) {
+            // usage json 可能前面有内容
+            const jsonStart = chunk.indexOf('{"type":"usage"')
+            const beforeJson = chunk.slice(0, jsonStart)
+            if (beforeJson.trim()) {
+              // 先把 usage json 前的内容加到 fullText
+              fullText += beforeJson
+            }
+            try {
+              const jsonEnd = chunk.lastIndexOf("}") + 1
+              const jsonPart = chunk.substring(jsonStart, jsonEnd)
+              const usageData = JSON.parse(jsonPart)
+              if (usageData.type === "usage") {
+                usageInfo = usageData.usage
+                console.log("Successfully parsed usage info:", usageInfo)
+                return // usage json 不加到内容
+              }
+            } catch (e) {
+              console.log("Failed to parse usage JSON:", e)
+              return
+            }
+          }
+          // If we reach here, it's regular content
           contentToAdd = isHosted
             ? chunk
-            : // Ollama's streaming endpoint returns new-line separated JSON
-              // objects. A chunk may have more than one of these objects, so we
-              // need to split the chunk by new-lines and handle each one
-              // separately.
-              chunk
+            : chunk
                 .trimEnd()
                 .split("\n")
                 .reduce(
@@ -314,6 +339,16 @@ export const processResponse = async (
           fullText += contentToAdd
         } catch (error) {
           console.error("Error parsing JSON:", error)
+          // If parsing fails, check if it might be usage info and skip it
+          if (chunk.includes('"type":"usage"') || chunk.includes('"usage"')) {
+            console.log(
+              "Skipping chunk that looks like usage info but failed to parse"
+            )
+            return
+          }
+          // If it's not usage info, treat as regular content
+          contentToAdd = isHosted ? chunk : chunk
+          fullText += contentToAdd
         }
 
         setChatMessages(prev =>
@@ -322,7 +357,8 @@ export const processResponse = async (
               const updatedChatMessage: ChatMessage = {
                 message: {
                   ...chatMessage.message,
-                  content: fullText
+                  content: fullText,
+                  model_usage: usageInfo ? [usageInfo] : undefined
                 },
                 fileItems: chatMessage.fileItems
               }
@@ -337,7 +373,7 @@ export const processResponse = async (
       controller.signal
     )
 
-    return fullText
+    return { text: fullText, usage: usageInfo }
   } else {
     throw new Error("Response body is null")
   }
@@ -381,6 +417,33 @@ export const handleCreateChat = async (
 
   setChatFiles(prev => [...prev, ...newMessageFiles])
 
+  // 检查并奖励每日第一次对话
+  try {
+    const response = await fetch("/api/points/first-conversation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        chatId: createdChat.id
+      })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success) {
+        // 可以在这里添加成功提示，比如显示一个toast通知
+        console.log(
+          "First conversation bonus earned:",
+          data.points_earned,
+          "points"
+        )
+      }
+    }
+  } catch (error) {
+    console.error("Error processing first conversation bonus:", error)
+  }
+
   return createdChat
 }
 
@@ -399,7 +462,8 @@ export const handleCreateMessages = async (
     React.SetStateAction<Tables<"file_items">[]>
   >,
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
-  selectedAssistant: Tables<"assistants"> | null
+  selectedAssistant: Tables<"assistants"> | null,
+  usageInfo?: any
 ) => {
   const finalUserMessage: TablesInsert<"messages"> = {
     chat_id: currentChat.id,
@@ -428,9 +492,13 @@ export const handleCreateMessages = async (
   if (isRegeneration) {
     const lastStartingMessage = chatMessages[chatMessages.length - 1].message
 
+    // Only use provided usage info if available
+    const modelUsage = usageInfo ? [usageInfo] : []
+
     const updatedMessage = await updateMessage(lastStartingMessage.id, {
       ...lastStartingMessage,
-      content: generatedText
+      content: generatedText,
+      model_usage: modelUsage
     })
 
     chatMessages[chatMessages.length - 1].message = updatedMessage
@@ -486,6 +554,22 @@ export const handleCreateMessages = async (
       })
     )
 
+    // Get usage info from the assistant message if available
+    const assistantMessage = chatMessages.find(
+      chatMessage => chatMessage.message.role === "assistant"
+    )
+    const modelUsage = usageInfo
+      ? [usageInfo]
+      : assistantMessage?.message.model_usage || []
+    console.log("Final modelUsage for database:", modelUsage)
+
+    const updatedAssistantMessage = await updateMessage(createdMessages[1].id, {
+      ...createdMessages[1],
+      model_usage: modelUsage
+    })
+
+    setChatFileItems(prevFileItems => [...prevFileItems, ...retrievedFileItems])
+
     finalChatMessages = [
       ...chatMessages,
       {
@@ -493,19 +577,13 @@ export const handleCreateMessages = async (
         fileItems: []
       },
       {
-        message: createdMessages[1],
+        message: updatedAssistantMessage,
         fileItems: retrievedFileItems.map(fileItem => fileItem.id)
       }
     ]
 
-    setChatFileItems(prevFileItems => {
-      const newFileItems = retrievedFileItems.filter(
-        fileItem => !prevFileItems.some(prevItem => prevItem.id === fileItem.id)
-      )
-
-      return [...prevFileItems, ...newFileItems]
-    })
-
     setChatMessages(finalChatMessages)
   }
+
+  return finalChatMessages
 }

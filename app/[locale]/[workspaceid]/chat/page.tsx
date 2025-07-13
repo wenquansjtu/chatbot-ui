@@ -3,14 +3,14 @@
 import { ChatHelp } from "@/components/chat/chat-help"
 import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { ChatInput } from "@/components/chat/chat-input"
-import { ChatSettings } from "@/components/chat/chat-settings"
 import { ChatUI } from "@/components/chat/chat-ui"
-import { QuickSettings } from "@/components/chat/quick-settings"
 import { Brand } from "@/components/ui/brand"
 import { ChatbotUIContext } from "@/context/context"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { useTheme } from "next-themes"
 import { useContext } from "react"
+import { UserLogin } from "@/components/utility/user-login"
+import { PointsDisplay } from "@/components/utility/points-display"
 
 export default function ChatPage() {
   useHotkey("o", () => handleNewChat())
@@ -28,16 +28,22 @@ export default function ChatPage() {
     <>
       {chatMessages.length === 0 ? (
         <div className="relative flex h-full flex-col items-center justify-center">
-          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mb-20">
+          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mb-32">
             <Brand theme={theme === "dark" ? "dark" : "light"} />
           </div>
 
-          <div className="absolute left-2 top-2">
-            <QuickSettings />
+          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mt-20 max-w-2xl px-4 text-center">
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Hello, I&apos;m AgentNet — a unified settlement and coordination
+              layer for AI Agents. I help bridge the gaps between different
+              models and systems, enabling secure, efficient, and trustworthy
+              collaboration across intelligent services.
+            </p>
           </div>
 
-          <div className="absolute right-2 top-2">
-            <ChatSettings />
+          <div className="absolute right-2 top-2 flex items-center space-x-2">
+            <PointsDisplay />
+            <UserLogin />
           </div>
 
           <div className="flex grow flex-col items-center justify-center" />

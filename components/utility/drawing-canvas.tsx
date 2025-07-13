@@ -22,14 +22,14 @@ export const DrawingCanvas: FC<DrawingCanvasProps> = ({ imageItem }) => {
       image.onload = () => {
         const aspectRatio = image.width / image.height
 
-        let newWidth = parentElement.clientWidth
+        // 使用父容器的宽度，但允许高度超出容器
+        let newWidth = Math.min(
+          parentElement.clientWidth,
+          window.innerWidth * 0.67
+        )
         let newHeight = newWidth / aspectRatio
 
-        if (newHeight > parentElement.clientHeight) {
-          newHeight = parentElement.clientHeight
-          newWidth = newHeight * aspectRatio
-        }
-
+        // 不再限制高度，允许图片保持原始比例
         canvas.width = newWidth
         canvas.height = newHeight
 
@@ -100,7 +100,6 @@ export const DrawingCanvas: FC<DrawingCanvasProps> = ({ imageItem }) => {
       onMouseMove={draw}
       onMouseLeave={finishDrawing}
       style={{
-        maxHeight: "67vh",
         maxWidth: "67vw"
       }}
     />

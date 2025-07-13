@@ -12,6 +12,7 @@ export const FinishStep: FC<FinishStepProps> = ({ displayName }) => {
         {displayName.length > 0 ? `, ${displayName.split(" ")[0]}` : null}!
       </div>
 
+      <div>Your API keys are configured from environment variables.</div>
       <div>Click next to start chatting.</div>
     </div>
   )

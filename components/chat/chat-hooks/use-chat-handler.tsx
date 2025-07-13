@@ -162,7 +162,7 @@ export const useChatHandler = () => {
       //     "gpt-4-1106-preview") as LLMID,
       //   prompt:
       //     selectedWorkspace.default_prompt ||
-      //     "You are a friendly, helpful AI assistant.",
+      //     "You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.",
       //   temperature: selectedWorkspace.default_temperature || 0.5,
       //   contextLength: selectedWorkspace.default_context_length || 4096,
       //   includeProfileContext:
@@ -271,6 +271,7 @@ export const useChatHandler = () => {
       }
 
       let generatedText = ""
+      let usageInfo: any = null
 
       if (selectedTools.length > 0) {
         setToolInUse("Tools")
@@ -295,7 +296,7 @@ export const useChatHandler = () => {
 
         setToolInUse("none")
 
-        generatedText = await processResponse(
+        const result = await processResponse(
           response,
           isRegeneration
             ? payload.chatMessages[payload.chatMessages.length - 1]
@@ -306,9 +307,12 @@ export const useChatHandler = () => {
           setChatMessages,
           setToolInUse
         )
+
+        generatedText = result.text
+        usageInfo = result.usage
       } else {
         if (modelData!.provider === "ollama") {
-          generatedText = await handleLocalChat(
+          const result = await handleLocalChat(
             payload,
             profile!,
             chatSettings!,
@@ -320,8 +324,11 @@ export const useChatHandler = () => {
             setChatMessages,
             setToolInUse
           )
+
+          generatedText = result.text
+          usageInfo = result.usage
         } else {
-          generatedText = await handleHostedChat(
+          const result = await handleHostedChat(
             payload,
             profile!,
             modelData!,
@@ -335,6 +342,9 @@ export const useChatHandler = () => {
             setChatMessages,
             setToolInUse
           )
+
+          generatedText = result.text
+          usageInfo = result.usage
         }
       }
 
@@ -377,7 +387,8 @@ export const useChatHandler = () => {
         setChatMessages,
         setChatFileItems,
         setChatImages,
-        selectedAssistant
+        selectedAssistant,
+        usageInfo
       )
 
       setIsGenerating(false)
