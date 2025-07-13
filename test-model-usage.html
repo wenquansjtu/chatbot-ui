@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Usage Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .usage-display {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Model Usage Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: API Response Parsing</h2>
+        <button onclick="testApiResponse()">Test API Response</button>
+        <div id="api-result" class="usage-display"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Usage Data Structure</h2>
+        <button onclick="testUsageStructure()">Test Usage Structure</button>
+        <div id="structure-result" class="usage-display"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Model Usage Display</h2>
+        <button onclick="testDisplay()">Test Display</button>
+        <div id="display-result" class="usage-display"></div>
+    </div>
+
+    <script>
+        function testApiResponse() {
+            const mockUsageData = {
+                type: "usage",
+                usage: {
+                    model: "gpt-4o",
+                    tokens: 1500,
+                    cost: 0.0025,
+                    distributedModels: [
+                        {
+                            model: "gpt-4o",
+                            tokens: 800,
+                            cost: 0.0015
+                        },
+                        {
+                            model: "claude-3.5-sonnet-20241022",
+                            tokens: 700,
+                            cost: 0.0010
+                        }
+                    ]
+                }
+            };
+            
+            const result = document.getElementById('api-result');
+            result.innerHTML = `
+                <h3>Mock API Response:</h3>
+                <pre>${JSON.stringify(mockUsageData, null, 2)}</pre>
+                <h3>Parsed Usage:</h3>
+                <pre>${JSON.stringify(mockUsageData.usage, null, 2)}</pre>
+            `;
+        }
+        
+        function testUsageStructure() {
+            const mockMessage = {
+                id: "test-message-id",
+                role: "assistant",
+                content: "This is a test message",
+                model_usage: [{
+                    model: "gpt-4o",
+                    tokens: 1500,
+                    cost: 0.0025,
+                    distributedModels: [
+                        {
+                            model: "gpt-4o",
+                            tokens: 800,
+                            cost: 0.0015
+                        },
+                        {
+                            model: "claude-3.5-sonnet-20241022",
+                            tokens: 700,
+                            cost: 0.0010
+                        }
+                    ]
+                }]
+            };
+            
+            const modelUsage = mockMessage.model_usage || [];
+            const processedModelUsage = (() => {
+                if (modelUsage.length > 0) {
+                    const firstUsage = modelUsage[0];
+                    console.log('First usage object:', firstUsage);
+                    
+                    if (firstUsage && firstUsage.distributedModels && Array.isArray(firstUsage.distributedModels)) {
+                        console.log('Found distributedModels:', firstUsage.distributedModels);
+                        return firstUsage.distributedModels;
+                    }
+                }
+                return [];
+            })();
+            
+            const totalTokens = processedModelUsage.reduce((sum, usage) => sum + (usage.tokens || 0), 0);
+            const totalCost = processedModelUsage.reduce((sum, usage) => sum + (usage.cost || 0), 0);
+            const shouldShowModelUsage = mockMessage.role === "assistant" && processedModelUsage.length > 0;
+            
+            const result = document.getElementById('structure-result');
+            result.innerHTML = `
+                <h3>Mock Message:</h3>
+                <pre>${JSON.stringify(mockMessage, null, 2)}</pre>
+                <h3>Processed Usage:</h3>
+                <pre>${JSON.stringify(processedModelUsage, null, 2)}</pre>
+                <h3>Calculated Values:</h3>
+                <p>Total Tokens: ${totalTokens}</p>
+                <p>Total Cost: $${totalCost.toFixed(4)}</p>
+                <p>Should Show: ${shouldShowModelUsage}</p>
+            `;
+        }
+        
+        function testDisplay() {
+            const mockUsage = [
+                {
+                    model: "gpt-4o",
+                    tokens: 800,
+                    cost: 0.0015
+                },
+                {
+                    model: "claude-3.5-sonnet-20241022",
+                    tokens: 700,
+                    cost: 0.0010
+                }
+            ];
+            
+            const totalTokens = mockUsage.reduce((sum, usage) => sum + usage.tokens, 0);
+            const totalCost = mockUsage.reduce((sum, usage) => sum + usage.cost, 0);
+            
+            const result = document.getElementById('display-result');
+            result.innerHTML = `
+                <h3>Model Usage Display:</h3>
+                <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span>Model Usage (${mockUsage.length} models)</span>
+                        <span>${totalTokens.toLocaleString()} tokens • $${totalCost.toFixed(4)} USD</span>
+                    </div>
+                    <div style="space-y: 10px;">
+                        ${mockUsage.map((usage, index) => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; border-radius: 3px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 8px; height: 8px; background: #007bff; border-radius: 50%;"></div>
+                                    <span style="font-weight: 500;">${usage.model}</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 500;">${usage.tokens.toLocaleString()} tokens</div>
+                                    <div style="font-size: 12px; color: #666;">$${usage.cost.toFixed(4)} USD</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${mockUsage.length > 1 ? `
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #e3f2fd; padding: 10px; border-radius: 3px; font-weight: 500;">
+                                <span>Total</span>
+                                <div style="text-align: right;">
+                                    <div>${totalTokens.toLocaleString()} tokens</div>
+                                    <div style="font-size: 12px; color: #666;">$${totalCost.toFixed(4)} USD</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html> 

@@ -181,14 +181,84 @@ export const Message: FC<MessageProps> = ({
 
   // Extract model usage from message
   const modelUsage = message.model_usage || []
-  const totalCost = modelUsage.reduce(
-    (sum: number, usage: any) => sum + (usage.cost || 0),
-    0
-  )
-  const totalTokens = modelUsage.reduce(
+
+  // Get distributed models from API if available
+  const processedModelUsage = (() => {
+    if (modelUsage.length > 0) {
+      const firstUsage = modelUsage[0]
+      console.log("First usage object:", firstUsage)
+
+      // Check if API provided distributed models
+      if (
+        firstUsage &&
+        firstUsage.distributedModels &&
+        Array.isArray(firstUsage.distributedModels)
+      ) {
+        console.log("Found distributedModels:", firstUsage.distributedModels)
+        return firstUsage.distributedModels
+      }
+
+      // Try to find distributedModels in any usage object
+      for (let i = 0; i < modelUsage.length; i++) {
+        const usage = modelUsage[i]
+        if (
+          usage &&
+          usage.distributedModels &&
+          Array.isArray(usage.distributedModels)
+        ) {
+          console.log(
+            `Found distributedModels in usage ${i}:`,
+            usage.distributedModels
+          )
+          return usage.distributedModels
+        }
+      }
+
+      // Try to parse as JSON if it's a string
+      if (typeof firstUsage === "string") {
+        try {
+          const parsed = JSON.parse(firstUsage)
+          if (
+            parsed.distributedModels &&
+            Array.isArray(parsed.distributedModels)
+          ) {
+            console.log(
+              "Found distributedModels in parsed string:",
+              parsed.distributedModels
+            )
+            return parsed.distributedModels
+          }
+        } catch (e) {
+          console.log("Failed to parse usage string:", e)
+        }
+      }
+    }
+
+    // If no distributed models found, return empty array
+    console.log("No distributedModels found")
+    return []
+  })()
+
+  // Calculate totals from processed usage
+  const totalTokens = processedModelUsage.reduce(
     (sum: number, usage: any) => sum + (usage.tokens || 0),
     0
   )
+  const totalCost = processedModelUsage.reduce(
+    (sum: number, usage: any) => sum + (usage.cost || 0),
+    0
+  )
+
+  // Show model usage for assistant messages that have usage data
+  const shouldShowModelUsage =
+    message.role === "assistant" && processedModelUsage.length > 0
+
+  // Debug logging
+  console.log("Message ID:", message.id)
+  console.log("Message role:", message.role)
+  console.log("Original model_usage:", message.model_usage)
+  console.log("Processed modelUsage:", processedModelUsage)
+  console.log("Should show model usage:", shouldShowModelUsage)
 
   return (
     <div
@@ -266,13 +336,7 @@ export const Message: FC<MessageProps> = ({
 
               <div className="font-semibold">
                 {message.role === "assistant"
-                  ? message.assistant_id
-                    ? assistants.find(
-                        assistant => assistant.id === message.assistant_id
-                      )?.name
-                    : selectedAssistant
-                      ? selectedAssistant?.name
-                      : MODEL_DATA?.modelName
+                  ? "AgentNet"
                   : profile?.display_name ?? profile?.username}
               </div>
             </div>
@@ -321,35 +385,65 @@ export const Message: FC<MessageProps> = ({
         </div>
 
         {/* Model Usage Display */}
-        {message.role === "assistant" &&
-          modelUsage.length > 0 &&
-          !isGenerating && (
-            <div className="mt-4 border-t border-gray-200 pt-4">
-              <details className="group">
-                <summary className="flex cursor-pointer items-center justify-between text-sm text-gray-600 hover:text-gray-800">
-                  <span>Model Usage</span>
-                  <span className="text-xs">
-                    {totalTokens.toLocaleString()} tokens • $
-                    {totalCost.toFixed(4)} USD
-                  </span>
-                </summary>
-                <div className="mt-2 space-y-2">
-                  {modelUsage.map((usage: any, index: number) => (
+        {shouldShowModelUsage && (
+          <div className="mt-4 border-t border-gray-200 pt-4">
+            <details className="group">
+              <summary className="flex cursor-pointer items-center justify-between text-sm text-gray-600 hover:text-gray-800">
+                <span className="flex items-center gap-2">
+                  <IconBolt size={16} />
+                  Model Usage ({processedModelUsage.length}{" "}
+                  {processedModelUsage.length === 1 ? "model" : "models"})
+                </span>
+                <span className="text-xs font-medium">
+                  {totalTokens.toLocaleString()} tokens • $
+                  {totalCost.toFixed(4)} USD
+                </span>
+              </summary>
+              <div className="mt-3 space-y-3">
+                {processedModelUsage.length > 0 ? (
+                  processedModelUsage.map((usage: any, index: number) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between text-xs text-gray-500"
+                      className="flex items-center justify-between rounded-lg bg-gray-50 p-3 text-sm"
                     >
-                      <span>{usage.model || "Unknown Model"}</span>
-                      <span>
-                        {usage.tokens?.toLocaleString() || 0} tokens • $
-                        {(usage.cost || 0).toFixed(4)} USD
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="size-2 rounded-full bg-blue-500"></div>
+                        <span className="font-medium">
+                          {usage.model || "Unknown Model"}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-gray-900">
+                          {usage.tokens?.toLocaleString() || 0} tokens
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          ${(usage.cost || 0).toFixed(4)} USD
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </details>
-            </div>
-          )}
+                  ))
+                ) : (
+                  <div className="text-sm italic text-gray-500">
+                    No model usage data available
+                  </div>
+                )}
+                {processedModelUsage.length > 1 && (
+                  <div className="flex items-center justify-between rounded-lg bg-blue-50 p-3 text-sm font-medium">
+                    <span>Total</span>
+                    <div className="text-right">
+                      <div className="text-gray-900">
+                        {totalTokens.toLocaleString()} tokens
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        ${totalCost.toFixed(4)} USD
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
+        )}
 
         {fileItems.length > 0 && (
           <div className="border-primary mt-6 border-t pt-4 font-bold">
