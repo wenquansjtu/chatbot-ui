@@ -2,6 +2,7 @@ import { Tables } from "@/supabase/types"
 import { ChatPayload, MessageImage } from "@/types"
 import { encode } from "gpt-tokenizer"
 import { getBase64FromDataURL, getMediaTypeFromDataURL } from "@/lib/utils"
+import { v4 as uuidv4 } from "uuid"
 
 const buildBasePrompt = (
   prompt: string,
@@ -110,11 +111,12 @@ export async function buildFinalMessages(
     assistant_id: null,
     content: BUILT_PROMPT,
     created_at: "",
-    id: processedChatMessages.length + "",
+    id: uuidv4(),
     image_paths: [],
-    model: payload.chatSettings.model,
+    model: chatSettings.model,
+    model_usage: null,
     role: "system",
-    sequence_number: processedChatMessages.length,
+    sequence_number: 0,
     updated_at: "",
     user_id: ""
   }

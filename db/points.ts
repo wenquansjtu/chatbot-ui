@@ -1,7 +1,9 @@
-import { supabase } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { Tables } from "@/supabase/types"
 
 export async function getUserPoints(userId: string) {
+  const supabase = createClient(cookies())
   const { data, error } = await supabase
     .from("user_points")
     .select("*")
@@ -17,6 +19,7 @@ export async function getUserPoints(userId: string) {
 }
 
 export async function getCheckInRecords(userId: string, limit = 30) {
+  const supabase = createClient(cookies())
   const { data, error } = await supabase
     .from("check_in_records")
     .select("*")
@@ -33,6 +36,7 @@ export async function getCheckInRecords(userId: string, limit = 30) {
 }
 
 export async function checkIfTodayCheckedIn(userId: string) {
+  const supabase = createClient(cookies())
   const today = new Date().toISOString().split("T")[0]
 
   const { data, error } = await supabase
@@ -52,6 +56,7 @@ export async function checkIfTodayCheckedIn(userId: string) {
 }
 
 export async function performDailyCheckIn(userId: string) {
+  const supabase = createClient(cookies())
   // 使用数据库函数来处理打卡逻辑
   const { data, error } = await supabase.rpc("daily_check_in", {
     user_uuid: userId
@@ -71,6 +76,7 @@ export async function performDailyCheckIn(userId: string) {
 }
 
 export async function getPointsHistory(userId: string, limit = 50) {
+  const supabase = createClient(cookies())
   const { data, error } = await supabase
     .from("check_in_records")
     .select("*")
@@ -88,6 +94,7 @@ export async function getPointsHistory(userId: string, limit = 50) {
 
 // 新增：检查今天是否已经获得第一次对话奖励
 export async function checkIfTodayFirstConversationEarned(userId: string) {
+  const supabase = createClient(cookies())
   const today = new Date().toISOString().split("T")[0]
 
   const { data, error } = await supabase
@@ -111,6 +118,7 @@ export async function performDailyFirstConversationBonus(
   userId: string,
   chatId: string
 ) {
+  const supabase = createClient(cookies())
   // 使用数据库函数来处理第一次对话奖励逻辑
   const { data, error } = await supabase.rpc("daily_first_conversation_bonus", {
     user_uuid: userId,
@@ -136,6 +144,7 @@ export async function performImageShareXBonus(
   messageId: string,
   imagePath?: string
 ) {
+  const supabase = createClient(cookies())
   // 使用数据库函数来处理图片分享到X奖励逻辑
   const { data, error } = await supabase.rpc("image_share_x_bonus", {
     user_uuid: userId,
@@ -161,6 +170,7 @@ export async function getDailyFirstConversationRecords(
   userId: string,
   limit = 30
 ) {
+  const supabase = createClient(cookies())
   const { data, error } = await supabase
     .from("daily_first_conversation_records")
     .select("*")
@@ -178,6 +188,7 @@ export async function getDailyFirstConversationRecords(
 
 // 新增：获取图片分享到X记录
 export async function getImageShareXRecords(userId: string, limit = 30) {
+  const supabase = createClient(cookies())
   const { data, error } = await supabase
     .from("image_share_x_records")
     .select("*")

@@ -98,6 +98,7 @@ export const createTempMessages = (
       id: uuidv4(),
       image_paths: b64Images,
       model: chatSettings.model,
+      model_usage: null,
       role: "user",
       sequence_number: chatMessages.length,
       updated_at: "",
@@ -115,6 +116,7 @@ export const createTempMessages = (
       id: uuidv4(),
       image_paths: [],
       model: chatSettings.model,
+      model_usage: null,
       role: "assistant",
       sequence_number: chatMessages.length + 1,
       updated_at: "",
@@ -358,7 +360,7 @@ export const processResponse = async (
                 message: {
                   ...chatMessage.message,
                   content: fullText,
-                  model_usage: usageInfo ? [usageInfo] : undefined
+                  model_usage: usageInfo ? [usageInfo] : null
                 },
                 fileItems: chatMessage.fileItems
               }

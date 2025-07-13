@@ -87,7 +87,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
       // 临时隐藏 model usage 容器
       modelUsageContainers.forEach(container => {
         if (container.textContent?.includes("Model Usage")) {
-          container.style.display = "none"
+          ;(container as HTMLElement).style.display = "none"
         }
       })
 
@@ -134,7 +134,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
       // 恢复 model usage 容器的显示
       modelUsageContainers.forEach(container => {
         if (container.textContent?.includes("Model Usage")) {
-          container.style.display = ""
+          ;(container as HTMLElement).style.display = ""
         }
       })
 

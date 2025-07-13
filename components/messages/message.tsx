@@ -190,18 +190,22 @@ export const Message: FC<MessageProps> = ({
 
   // Get distributed models from API if available
   const processedModelUsage = (() => {
-    if (modelUsage.length > 0) {
+    if (Array.isArray(modelUsage) && modelUsage.length > 0) {
       const firstUsage = modelUsage[0]
       console.log("First usage object:", firstUsage)
 
       // Check if API provided distributed models
       if (
         firstUsage &&
-        firstUsage.distributedModels &&
-        Array.isArray(firstUsage.distributedModels)
+        typeof firstUsage === "object" &&
+        "distributedModels" in firstUsage &&
+        Array.isArray((firstUsage as any).distributedModels)
       ) {
-        console.log("Found distributedModels:", firstUsage.distributedModels)
-        return firstUsage.distributedModels
+        console.log(
+          "Found distributedModels:",
+          (firstUsage as any).distributedModels
+        )
+        return (firstUsage as any).distributedModels
       }
 
       // Try to find distributedModels in any usage object
@@ -209,14 +213,15 @@ export const Message: FC<MessageProps> = ({
         const usage = modelUsage[i]
         if (
           usage &&
-          usage.distributedModels &&
-          Array.isArray(usage.distributedModels)
+          typeof usage === "object" &&
+          "distributedModels" in usage &&
+          Array.isArray((usage as any).distributedModels)
         ) {
           console.log(
-            `Found distributedModels in usage ${i}:`,
-            usage.distributedModels
+            "Found distributedModels in usage:",
+            (usage as any).distributedModels
           )
-          return usage.distributedModels
+          return (usage as any).distributedModels
         }
       }
 
