@@ -28,21 +28,37 @@ ALTER TABLE user_points ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_in_records ENABLE ROW LEVEL SECURITY;
 
 -- 用户积分表策略
-CREATE POLICY "Users can view their own points" ON user_points
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own points" ON user_points
-    FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own points" ON user_points
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_points' AND policyname = 'Users can view their own points') THEN
+        CREATE POLICY "Users can view their own points" ON user_points
+            FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_points' AND policyname = 'Users can update their own points') THEN
+        CREATE POLICY "Users can update their own points" ON user_points
+            FOR UPDATE USING (auth.uid() = user_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_points' AND policyname = 'Users can insert their own points') THEN
+        CREATE POLICY "Users can insert their own points" ON user_points
+            FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
+END $$;
 
 -- 打卡记录表策略
-CREATE POLICY "Users can view their own check-in records" ON check_in_records
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own check-in records" ON check_in_records
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'check_in_records' AND policyname = 'Users can view their own check-in records') THEN
+        CREATE POLICY "Users can view their own check-in records" ON check_in_records
+            FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'check_in_records' AND policyname = 'Users can insert their own check-in records') THEN
+        CREATE POLICY "Users can insert their own check-in records" ON check_in_records
+            FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
+END $$;
 
 -- 创建函数来初始化用户积分
 CREATE OR REPLACE FUNCTION initialize_user_points()

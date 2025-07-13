@@ -417,6 +417,33 @@ export const handleCreateChat = async (
 
   setChatFiles(prev => [...prev, ...newMessageFiles])
 
+  // 检查并奖励每日第一次对话
+  try {
+    const response = await fetch("/api/points/first-conversation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        chatId: createdChat.id
+      })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success) {
+        // 可以在这里添加成功提示，比如显示一个toast通知
+        console.log(
+          "First conversation bonus earned:",
+          data.points_earned,
+          "points"
+        )
+      }
+    }
+  } catch (error) {
+    console.error("Error processing first conversation bonus:", error)
+  }
+
   return createdChat
 }
 

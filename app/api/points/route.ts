@@ -70,9 +70,47 @@ export async function GET() {
       )
     }
 
+    // Get daily first conversation records
+    const { data: firstConversationData, error: firstConversationError } =
+      await supabase
+        .from("daily_first_conversation_records")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("conversation_date", { ascending: false })
+        .limit(30)
+
+    if (firstConversationError) {
+      console.error(
+        "Error fetching first conversation records:",
+        firstConversationError
+      )
+      return NextResponse.json(
+        { error: "Failed to fetch first conversation records" },
+        { status: 500 }
+      )
+    }
+
+    // Get image share X records
+    const { data: imageShareData, error: imageShareError } = await supabase
+      .from("image_share_x_records")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("share_date", { ascending: false })
+      .limit(30)
+
+    if (imageShareError) {
+      console.error("Error fetching image share records:", imageShareError)
+      return NextResponse.json(
+        { error: "Failed to fetch image share records" },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({
       points: pointsData,
-      check_in_records: checkInData || []
+      check_in_records: checkInData || [],
+      first_conversation_records: firstConversationData || [],
+      image_share_records: imageShareData || []
     })
   } catch (error) {
     console.error("Points route error:", error)

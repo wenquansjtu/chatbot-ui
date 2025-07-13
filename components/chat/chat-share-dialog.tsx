@@ -6,6 +6,7 @@ import { FC, useEffect, useState } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import html2canvas from "html2canvas"
+import { toast } from "sonner"
 
 interface ChatShareDialogProps {
   isOpen: boolean
@@ -190,13 +191,39 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
   }
 
   // 分享到Twitter
-  const shareToTwitter = () => {
-    if (!generatedImage) return
+  const shareToTwitter = async () => {
+    if (!generatedImage || !selectedMessage) return
 
     const text = "Check out my conversation with AgentNet! 🤖✨"
     const url = window.location.href
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
+
+    // 打开Twitter分享页面
     window.open(twitterUrl, "_blank")
+
+    // 奖励积分
+    try {
+      const response = await fetch("/api/points/share-image-x", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messageId: selectedMessage.id,
+          imagePath: selectedMessage.image_paths?.[0] || ""
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // 显示成功提示
+          toast.success(`Shared to X! Earned ${data.points_earned} points! 🎉`)
+        }
+      }
+    } catch (error) {
+      console.error("Error processing image share bonus:", error)
+    }
   }
 
   // 当对话框打开时生成图片

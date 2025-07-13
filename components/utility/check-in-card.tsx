@@ -4,6 +4,8 @@ import {
   IconCalendar,
   IconCheck,
   IconCoins,
+  IconMessage,
+  IconShare,
   IconTrophy
 } from "@tabler/icons-react"
 import { FC, useContext, useEffect, useState } from "react"
@@ -143,7 +145,7 @@ export const CheckInCard: FC<CheckInCardProps> = ({}) => {
           Points System
         </CardTitle>
         <CardDescription>
-          Daily check-in to earn points and unlock more features
+          Earn points through daily activities and unlock more features
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -203,6 +205,36 @@ export const CheckInCard: FC<CheckInCardProps> = ({}) => {
               ✓ Earned 100 points today
             </p>
           )}
+        </div>
+
+        {/* Points earning rules */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-gray-700">
+            How to Earn Points
+          </h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded bg-green-50 p-2">
+              <div className="flex items-center gap-2">
+                <IconCalendar className="size-4 text-green-600" />
+                <span className="text-gray-700">Daily Check-in</span>
+              </div>
+              <span className="font-medium text-green-600">+100 points</span>
+            </div>
+            <div className="flex items-center justify-between rounded bg-blue-50 p-2">
+              <div className="flex items-center gap-2">
+                <IconMessage className="size-4 text-blue-600" />
+                <span className="text-gray-700">First Daily Conversation</span>
+              </div>
+              <span className="font-medium text-blue-600">+100 points</span>
+            </div>
+            <div className="flex items-center justify-between rounded bg-purple-50 p-2">
+              <div className="flex items-center gap-2">
+                <IconShare className="size-4 text-purple-600" />
+                <span className="text-gray-700">Share Image to X</span>
+              </div>
+              <span className="font-medium text-purple-600">+200 points</span>
+            </div>
+          </div>
         </div>
 
         {/* Recent check-in records */}
