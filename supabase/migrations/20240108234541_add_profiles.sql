@@ -127,7 +127,7 @@ BEGIN
         'Home',
         4096,
         'gpt-4-1106-preview',
-        'You are a friendly, helpful AI assistant.',
+        'You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.',
         0.5,
         'My home workspace.',
         'openai',

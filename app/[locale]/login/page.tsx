@@ -1,60 +1,54 @@
+"use client"
+
 import { Brand } from "@/components/ui/brand"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SubmitButton } from "@/components/ui/submit-button"
-import { createClient } from "@/lib/supabase/server"
-import { Database } from "@/supabase/types"
-import { createServerClient } from "@supabase/ssr"
-import { get } from "@vercel/edge-config"
-import { Metadata } from "next"
-import { cookies, headers } from "next/headers"
-import { redirect } from "next/navigation"
+import { MetaMaskLogin } from "@/components/auth/metamask-login"
+import { supabase } from "@/lib/supabase/browser-client"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 
-export const metadata: Metadata = {
-  title: "Login"
-}
+export default function LoginPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState("")
 
-export default async function Login({
-  searchParams
-}: {
-  searchParams: { message: string }
-}) {
-  const cookieStore = cookies()
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+  useEffect(() => {
+    const checkSession = async () => {
+      const session = (await supabase.auth.getSession()).data.session
+
+      if (session) {
+        const { data: homeWorkspace, error } = await supabase
+          .from("workspaces")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .eq("is_home", true)
+          .single()
+
+        if (!homeWorkspace) {
+          throw new Error(error?.message || "Unable to find workspace")
         }
+
+        router.push(`/${homeWorkspace.id}/chat`)
+      } else {
+        setLoading(false)
       }
     }
-  )
-  const session = (await supabase.auth.getSession()).data.session
 
-  if (session) {
-    const { data: homeWorkspace, error } = await supabase
-      .from("workspaces")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .eq("is_home", true)
-      .single()
+    checkSession()
 
-    if (!homeWorkspace) {
-      throw new Error(error.message)
+    // Show error message
+    const errorMessage = searchParams.get("message")
+    if (errorMessage) {
+      setMessage(errorMessage)
     }
+  }, [router, searchParams])
 
-    return redirect(`/${homeWorkspace.id}/chat`)
-  }
-
-  const signIn = async (formData: FormData) => {
-    "use server"
-
+  const handleSignIn = async (formData: FormData) => {
     const email = formData.get("email") as string
     const password = formData.get("password") as string
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -62,7 +56,8 @@ export default async function Login({
     })
 
     if (error) {
-      return redirect(`/login?message=${error.message}`)
+      setMessage(error.message)
+      return
     }
 
     const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
@@ -73,99 +68,115 @@ export default async function Login({
       .single()
 
     if (!homeWorkspace) {
-      throw new Error(
-        homeWorkspaceError?.message || "An unexpected error occurred"
-      )
+      setMessage(homeWorkspaceError?.message || "An unexpected error occurred")
+      return
     }
 
-    return redirect(`/${homeWorkspace.id}/chat`)
+    router.push(`/${homeWorkspace.id}/chat`)
   }
 
-  const getEnvVarOrEdgeConfigValue = async (name: string) => {
-    "use server"
-    if (process.env.EDGE_CONFIG) {
-      return await get<string>(name)
-    }
-
-    return process.env[name]
-  }
-
-  const signUp = async (formData: FormData) => {
-    "use server"
-
+  const handleSignUp = async (formData: FormData) => {
     const email = formData.get("email") as string
     const password = formData.get("password") as string
 
-    const emailDomainWhitelistPatternsString = await getEnvVarOrEdgeConfigValue(
-      "EMAIL_DOMAIN_WHITELIST"
-    )
-    const emailDomainWhitelist = emailDomainWhitelistPatternsString?.trim()
-      ? emailDomainWhitelistPatternsString?.split(",")
-      : []
-    const emailWhitelistPatternsString =
-      await getEnvVarOrEdgeConfigValue("EMAIL_WHITELIST")
-    const emailWhitelist = emailWhitelistPatternsString?.trim()
-      ? emailWhitelistPatternsString?.split(",")
-      : []
-
-    // If there are whitelist patterns, check if the email is allowed to sign up
-    if (emailDomainWhitelist.length > 0 || emailWhitelist.length > 0) {
-      const domainMatch = emailDomainWhitelist?.includes(email.split("@")[1])
-      const emailMatch = emailWhitelist?.includes(email)
-      if (!domainMatch && !emailMatch) {
-        return redirect(
-          `/login?message=Email ${email} is not allowed to sign up.`
-        )
-      }
-    }
-
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
     const { error } = await supabase.auth.signUp({
       email,
-      password,
-      options: {
-        // USE IF YOU WANT TO SEND EMAIL VERIFICATION, ALSO CHANGE TOML FILE
-        // emailRedirectTo: `${origin}/auth/callback`
-      }
+      password
     })
 
     if (error) {
-      console.error(error)
-      return redirect(`/login?message=${error.message}`)
+      setMessage(error.message)
+      return
     }
 
-    return redirect("/setup")
-
-    // USE IF YOU WANT TO SEND EMAIL VERIFICATION, ALSO CHANGE TOML FILE
-    // return redirect("/login?message=Check email to continue sign in process")
+    router.push("/setup")
   }
 
   const handleResetPassword = async (formData: FormData) => {
-    "use server"
-
-    const origin = headers().get("origin")
     const email = formData.get("email") as string
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/callback?next=/login/password`
+      redirectTo: `${window.location.origin}/auth/callback?next=/login/password`
     })
 
     if (error) {
-      return redirect(`/login?message=${error.message}`)
+      setMessage(error.message)
+      return
     }
 
-    return redirect("/login?message=Check email to reset password")
+    setMessage("Check email to reset password")
+  }
+
+  const handleMetaMaskLogin = async (
+    address: string,
+    signature: string,
+    message: string
+  ) => {
+    try {
+      const response = await fetch("/api/auth/wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ address, signature, message })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        if (data.isNewUser) {
+          // New user, create account and login
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: `${address.toLowerCase()}@wallet.local`,
+            password: address.toLowerCase()
+          })
+
+          if (signUpError) {
+            setMessage("Wallet registration failed: " + signUpError.message)
+            return
+          }
+
+          // Wait a bit for account creation to complete
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+
+        // Login user
+        const { error } = await supabase.auth.signInWithPassword({
+          email: `${address.toLowerCase()}@wallet.local`,
+          password: address.toLowerCase()
+        })
+
+        if (error) {
+          setMessage("Wallet login failed: " + error.message)
+          return
+        }
+
+        router.push(`/${data.workspaceId}/chat`)
+      } else {
+        setMessage(data.error)
+      }
+    } catch (error: any) {
+      setMessage("Wallet login failed: " + error.message)
+    }
+  }
+
+  const handleMetaMaskError = (error: string) => {
+    setMessage(error)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex w-full flex-1 flex-col justify-center gap-2 px-8 sm:max-w-md">
+        <div className="animate-pulse text-center">Loading...</div>
+      </div>
+    )
   }
 
   return (
     <div className="flex w-full flex-1 flex-col justify-center gap-2 px-8 sm:max-w-md">
       <form
         className="animate-in text-foreground flex w-full flex-1 flex-col justify-center gap-2"
-        action={signIn}
+        action={handleSignIn}
       >
         <Brand />
 
@@ -194,7 +205,7 @@ export default async function Login({
         </SubmitButton>
 
         <SubmitButton
-          formAction={signUp}
+          formAction={handleSignUp}
           className="border-foreground/20 mb-2 rounded-md border px-4 py-2"
         >
           Sign Up
@@ -210,12 +221,32 @@ export default async function Login({
           </button>
         </div>
 
-        {searchParams?.message && (
+        {message && (
           <p className="bg-foreground/10 text-foreground mt-4 p-4 text-center">
-            {searchParams.message}
+            {message}
           </p>
         )}
       </form>
+
+      <div className="mt-6">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background text-muted-foreground px-2">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <MetaMaskLogin
+            onLogin={handleMetaMaskLogin}
+            onError={handleMetaMaskError}
+          />
+        </div>
+      </div>
     </div>
   )
 }

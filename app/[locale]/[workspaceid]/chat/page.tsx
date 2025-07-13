@@ -28,8 +28,17 @@ export default function ChatPage() {
     <>
       {chatMessages.length === 0 ? (
         <div className="relative flex h-full flex-col items-center justify-center">
-          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mb-20">
+          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mb-32">
             <Brand theme={theme === "dark" ? "dark" : "light"} />
+          </div>
+
+          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mt-20 max-w-2xl px-4 text-center">
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Hello, I&apos;m AgentNet — a unified settlement and coordination
+              layer for AI Agents. I help bridge the gaps between different
+              models and systems, enabling secure, efficient, and trustworthy
+              collaboration across intelligent services.
+            </p>
           </div>
 
           <div className="absolute left-2 top-2">

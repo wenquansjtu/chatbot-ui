@@ -38,10 +38,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Policy to allow users to read their own files
-CREATE POLICY "Allow users to read their own files"
-ON storage.objects FOR SELECT
-TO authenticated
-USING (auth.uid()::text = owner_id::text);
+-- Note: This policy will be created later when storage is properly configured
 
 -- Function to delete a storage object
 CREATE OR REPLACE FUNCTION delete_storage_object(bucket TEXT, object TEXT, OUT status INT, OUT content TEXT)

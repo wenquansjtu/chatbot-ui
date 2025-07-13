@@ -179,6 +179,17 @@ export const Message: FC<MessageProps> = ({
     return acc
   }, fileAccumulator)
 
+  // Extract model usage from message
+  const modelUsage = message.model_usage || []
+  const totalCost = modelUsage.reduce(
+    (sum: number, usage: any) => sum + (usage.cost || 0),
+    0
+  )
+  const totalTokens = modelUsage.reduce(
+    (sum: number, usage: any) => sum + (usage.tokens || 0),
+    0
+  )
+
   return (
     <div
       className={cn(
@@ -308,6 +319,37 @@ export const Message: FC<MessageProps> = ({
             <MessageMarkdown content={message.content} />
           )}
         </div>
+
+        {/* Model Usage Display */}
+        {message.role === "assistant" &&
+          modelUsage.length > 0 &&
+          !isGenerating && (
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <details className="group">
+                <summary className="flex cursor-pointer items-center justify-between text-sm text-gray-600 hover:text-gray-800">
+                  <span>Model Usage</span>
+                  <span className="text-xs">
+                    {totalTokens.toLocaleString()} tokens • $
+                    {totalCost.toFixed(4)} USD
+                  </span>
+                </summary>
+                <div className="mt-2 space-y-2">
+                  {modelUsage.map((usage: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between text-xs text-gray-500"
+                    >
+                      <span>{usage.model || "Unknown Model"}</span>
+                      <span>
+                        {usage.tokens?.toLocaleString() || 0} tokens • $
+                        {(usage.cost || 0).toFixed(4)} USD
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          )}
 
         {fileItems.length > 0 && (
           <div className="border-primary mt-6 border-t pt-4 font-bold">

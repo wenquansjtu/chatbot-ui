@@ -208,9 +208,12 @@ export const handleHostedChat = async (
 
   let draftMessages = await buildFinalMessages(payload, profile, chatImages)
 
-  let formattedMessages : any[] = []
+  let formattedMessages: any[] = []
   if (provider === "google") {
-    formattedMessages = await adaptMessagesForGoogleGemini(payload, draftMessages)
+    formattedMessages = await adaptMessagesForGoogleGemini(
+      payload,
+      draftMessages
+    )
   } else {
     formattedMessages = draftMessages
   }
@@ -428,9 +431,13 @@ export const handleCreateMessages = async (
   if (isRegeneration) {
     const lastStartingMessage = chatMessages[chatMessages.length - 1].message
 
+    // 重新生成时也更新模型使用信息
+    const modelUsage = generateModelUsage(generatedText)
+
     const updatedMessage = await updateMessage(lastStartingMessage.id, {
       ...lastStartingMessage,
-      content: generatedText
+      content: generatedText,
+      model_usage: modelUsage
     })
 
     chatMessages[chatMessages.length - 1].message = updatedMessage

@@ -162,7 +162,7 @@ export const useChatHandler = () => {
       //     "gpt-4-1106-preview") as LLMID,
       //   prompt:
       //     selectedWorkspace.default_prompt ||
-      //     "You are a friendly, helpful AI assistant.",
+      //     "You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.",
       //   temperature: selectedWorkspace.default_temperature || 0.5,
       //   contextLength: selectedWorkspace.default_context_length || 4096,
       //   includeProfileContext:
