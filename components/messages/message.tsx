@@ -77,6 +77,7 @@ export const Message: FC<MessageProps> = ({
     useState<Tables<"file_items"> | null>(null)
 
   const [viewSources, setViewSources] = useState(false)
+  const [isModelUsageExpanded, setIsModelUsageExpanded] = useState(false)
 
   const handleCopy = () => {
     if (navigator.clipboard) {
@@ -125,6 +126,11 @@ export const Message: FC<MessageProps> = ({
       input.setSelectionRange(input.value.length, input.value.length)
     }
   }, [isEditing])
+
+  // 确保 model usage 默认折叠
+  useEffect(() => {
+    setIsModelUsageExpanded(false)
+  }, [message.id])
 
   const MODEL_DATA = [
     ...models.map(model => ({
@@ -387,7 +393,11 @@ export const Message: FC<MessageProps> = ({
         {/* Model Usage Display */}
         {shouldShowModelUsage && (
           <div className="mt-4 border-t border-gray-200 pt-4">
-            <details className="group">
+            <details
+              className="group"
+              open={isModelUsageExpanded}
+              onToggle={e => setIsModelUsageExpanded(e.currentTarget.open)}
+            >
               <summary className="flex cursor-pointer items-center justify-between text-sm text-gray-600 hover:text-gray-800">
                 <span className="flex items-center gap-2">
                   <IconBolt size={16} />

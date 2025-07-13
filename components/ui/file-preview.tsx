@@ -33,19 +33,22 @@ export const FilePreview: FC<FilePreviewProps> = ({
             const imageItem = item as MessageImage
 
             return imageItem.file ? (
-              <DrawingCanvas imageItem={imageItem} />
+              <div className="max-h-[80vh] overflow-auto">
+                <DrawingCanvas imageItem={imageItem} />
+              </div>
             ) : (
-              <Image
-                className="rounded"
-                src={imageItem.base64 || imageItem.url}
-                alt="File image"
-                width={2000}
-                height={2000}
-                style={{
-                  maxHeight: "67vh",
-                  maxWidth: "67vw"
-                }}
-              />
+              <div className="max-h-[80vh] overflow-auto">
+                <Image
+                  className="rounded"
+                  src={imageItem.base64 || imageItem.url}
+                  alt="File image"
+                  width={2000}
+                  height={2000}
+                  style={{
+                    maxWidth: "67vw"
+                  }}
+                />
+              </div>
             )
           } else if (type === "file_item") {
             const fileItem = item as Tables<"file_items">

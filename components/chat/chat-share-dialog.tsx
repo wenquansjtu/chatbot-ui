@@ -73,6 +73,27 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
       messagesContainer.style.height = "auto"
       messagesContainer.style.backgroundColor = "#fff"
 
+      // 折叠所有 model usage details 元素并隐藏相关容器
+      const detailsElements = messagesContainer.querySelectorAll("details")
+      const modelUsageContainers = messagesContainer.querySelectorAll(
+        ".mt-4.border-t.border-gray-200.pt-4"
+      )
+
+      detailsElements.forEach(detail => {
+        detail.removeAttribute("open")
+        detail.setAttribute("open", "false")
+      })
+
+      // 临时隐藏 model usage 容器
+      modelUsageContainers.forEach(container => {
+        if (container.textContent?.includes("Model Usage")) {
+          container.style.display = "none"
+        }
+      })
+
+      // 强制触发重新渲染
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       // 滚动到顶部以确保捕获所有内容
       messagesContainer.scrollTop = 0
 
@@ -109,6 +130,13 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
       messagesContainer.style.height = originalHeight
       messagesContainer.style.backgroundColor = originalBg
       messagesContainer.scrollTop = originalScrollTop
+
+      // 恢复 model usage 容器的显示
+      modelUsageContainers.forEach(container => {
+        if (container.textContent?.includes("Model Usage")) {
+          container.style.display = ""
+        }
+      })
 
       // 创建新的canvas来添加费用统计信息
       const finalCanvas = document.createElement("canvas")
@@ -253,7 +281,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
             </div>
           ) : generatedImage ? (
             <div className="space-y-4">
-              <div className="flex justify-center">
+              <div className="flex max-h-[70vh] justify-center overflow-auto">
                 <img
                   src={generatedImage}
                   alt="Chat conversation"
