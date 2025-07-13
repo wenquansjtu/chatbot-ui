@@ -10,6 +10,10 @@ interface ModelOptionProps {
 }
 
 export const ModelOption: FC<ModelOptionProps> = ({ model, onSelect }) => {
+  // 新增：将 USD 替换为 USD1
+  const displayCurrency = (currency: string) =>
+    currency === "USD" ? "USD1" : currency
+
   return (
     <WithTooltip
       display={
@@ -18,13 +22,15 @@ export const ModelOption: FC<ModelOptionProps> = ({ model, onSelect }) => {
             <div className="space-y-1 text-sm">
               <div>
                 <span className="font-semibold">Input Cost:</span>{" "}
-                {model.pricing.inputCost} {model.pricing.currency} per{" "}
+                {model.pricing.inputCost}{" "}
+                {displayCurrency(model.pricing.currency)} per{" "}
                 {model.pricing.unit}
               </div>
               {model.pricing.outputCost && (
                 <div>
                   <span className="font-semibold">Output Cost:</span>{" "}
-                  {model.pricing.outputCost} {model.pricing.currency} per{" "}
+                  {model.pricing.outputCost}{" "}
+                  {displayCurrency(model.pricing.currency)} per{" "}
                   {model.pricing.unit}
                 </div>
               )}
@@ -35,7 +41,7 @@ export const ModelOption: FC<ModelOptionProps> = ({ model, onSelect }) => {
       side="bottom"
       trigger={
         <div
-          className="hover:bg-accent flex w-full cursor-pointer justify-start space-x-3 truncate rounded p-2 hover:opacity-50"
+          className="flex w-full cursor-pointer justify-start space-x-3 truncate rounded p-2"
           onClick={onSelect}
         >
           <div className="flex items-center space-x-2">

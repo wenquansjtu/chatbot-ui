@@ -19,9 +19,11 @@ import {
 } from "../ui/card"
 import { toast } from "sonner"
 
-interface CheckInCardProps {}
+interface CheckInCardProps {
+  onPointsUpdate?: () => void
+}
 
-export const CheckInCard: FC<CheckInCardProps> = ({}) => {
+export const CheckInCard: FC<CheckInCardProps> = ({ onPointsUpdate }) => {
   const { profile } = useContext(ChatbotUIContext)
   const [points, setPoints] = useState<number>(0)
   const [checkedInToday, setCheckedInToday] = useState(false)
@@ -114,6 +116,11 @@ export const CheckInCard: FC<CheckInCardProps> = ({}) => {
 
           // Refresh data
           await fetchPointsData()
+
+          // Notify parent component to refresh
+          if (onPointsUpdate) {
+            onPointsUpdate()
+          }
         } else {
           toast.error(data.message || "Check-in failed")
         }

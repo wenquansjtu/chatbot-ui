@@ -58,35 +58,40 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   } = useContext(ChatbotUIContext)
 
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     ;(async () => {
       const session = (await supabase.auth.getSession()).data.session
 
-      if (!session) {
-        return router.push("/login")
-      } else {
+      if (session) {
+        setIsAuthenticated(true)
         await fetchWorkspaceData(workspaceId)
+      } else {
+        // 未登录用户也可以访问，但不会加载工作空间数据
+        setLoading(false)
       }
     })()
   }, [])
 
   useEffect(() => {
-    ;(async () => await fetchWorkspaceData(workspaceId))()
+    if (isAuthenticated) {
+      ;(async () => await fetchWorkspaceData(workspaceId))()
 
-    setUserInput("")
-    setChatMessages([])
-    setSelectedChat(null)
+      setUserInput("")
+      setChatMessages([])
+      setSelectedChat(null)
 
-    setIsGenerating(false)
-    setFirstTokenReceived(false)
+      setIsGenerating(false)
+      setFirstTokenReceived(false)
 
-    setChatFiles([])
-    setChatImages([])
-    setNewMessageFiles([])
-    setNewMessageImages([])
-    setShowFilesDisplay(false)
-  }, [workspaceId])
+      setChatFiles([])
+      setChatImages([])
+      setNewMessageFiles([])
+      setNewMessageImages([])
+      setShowFilesDisplay(false)
+    }
+  }, [workspaceId, isAuthenticated])
 
   const fetchWorkspaceData = async (workspaceId: string) => {
     setLoading(true)

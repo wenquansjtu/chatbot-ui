@@ -1,9 +1,6 @@
 "use client"
 
 import { Brand } from "@/components/ui/brand"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { SubmitButton } from "@/components/ui/submit-button"
 import { MetaMaskLogin } from "@/components/auth/metamask-login"
 import { supabase } from "@/lib/supabase/browser-client"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -45,67 +42,6 @@ export default function LoginPage() {
       setMessage(errorMessage)
     }
   }, [router, searchParams])
-
-  const handleSignIn = async (formData: FormData) => {
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-
-    const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
-      .from("workspaces")
-      .select("*")
-      .eq("user_id", data.user.id)
-      .eq("is_home", true)
-      .single()
-
-    if (!homeWorkspace) {
-      setMessage(homeWorkspaceError?.message || "An unexpected error occurred")
-      return
-    }
-
-    router.push(`/${homeWorkspace.id}/chat`)
-  }
-
-  const handleSignUp = async (formData: FormData) => {
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password
-    })
-
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-
-    router.push("/setup")
-  }
-
-  const handleResetPassword = async (formData: FormData) => {
-    const email = formData.get("email") as string
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/login/password`
-    })
-
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-
-    setMessage("Check email to reset password")
-  }
 
   const handleMetaMaskLogin = async (
     address: string,
@@ -174,78 +110,28 @@ export default function LoginPage() {
 
   return (
     <div className="flex w-full flex-1 flex-col justify-center gap-2 px-8 sm:max-w-md">
-      <form
-        className="animate-in text-foreground flex w-full flex-1 flex-col justify-center gap-2"
-        action={handleSignIn}
-      >
+      <div className="animate-in text-foreground flex w-full flex-1 flex-col justify-center gap-2">
         <Brand />
 
-        <Label className="text-md mt-4" htmlFor="email">
-          Email
-        </Label>
-        <Input
-          className="mb-3 rounded-md border bg-inherit px-4 py-2"
-          name="email"
-          placeholder="you@example.com"
-          required
-        />
-
-        <Label className="text-md" htmlFor="password">
-          Password
-        </Label>
-        <Input
-          className="mb-6 rounded-md border bg-inherit px-4 py-2"
-          type="password"
-          name="password"
-          placeholder="••••••••"
-        />
-
-        <SubmitButton className="mb-2 rounded-md bg-blue-700 px-4 py-2 text-white">
-          Login
-        </SubmitButton>
-
-        <SubmitButton
-          formAction={handleSignUp}
-          className="border-foreground/20 mb-2 rounded-md border px-4 py-2"
-        >
-          Sign Up
-        </SubmitButton>
-
-        <div className="text-muted-foreground mt-1 flex justify-center text-sm">
-          <span className="mr-1">Forgot your password?</span>
-          <button
-            formAction={handleResetPassword}
-            className="text-primary ml-1 underline hover:opacity-80"
-          >
-            Reset
-          </button>
-        </div>
-
-        {message && (
-          <p className="bg-foreground/10 text-foreground mt-4 p-4 text-center">
-            {message}
+        <div className="mt-8 text-center">
+          <h1 className="mb-4 text-2xl font-bold">Welcome to AgentNet</h1>
+          <p className="text-muted-foreground mb-8">
+            Connect your wallet to start chatting with AI agents
           </p>
-        )}
-      </form>
-
-      <div className="mt-6">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background text-muted-foreground px-2">
-              Or continue with
-            </span>
-          </div>
         </div>
 
-        <div className="mt-6">
+        <div className="flex justify-center">
           <MetaMaskLogin
             onLogin={handleMetaMaskLogin}
             onError={handleMetaMaskError}
           />
         </div>
+
+        {message && (
+          <p className="bg-foreground/10 text-foreground mt-4 rounded p-4 text-center">
+            {message}
+          </p>
+        )}
       </div>
     </div>
   )

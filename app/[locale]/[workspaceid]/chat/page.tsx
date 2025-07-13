@@ -3,14 +3,14 @@
 import { ChatHelp } from "@/components/chat/chat-help"
 import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { ChatInput } from "@/components/chat/chat-input"
-import { ChatSettings } from "@/components/chat/chat-settings"
 import { ChatUI } from "@/components/chat/chat-ui"
-import { QuickSettings } from "@/components/chat/quick-settings"
 import { Brand } from "@/components/ui/brand"
 import { ChatbotUIContext } from "@/context/context"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { useTheme } from "next-themes"
 import { useContext } from "react"
+import { UserLogin } from "@/components/utility/user-login"
+import { PointsDisplay } from "@/components/utility/points-display"
 
 export default function ChatPage() {
   useHotkey("o", () => handleNewChat())
@@ -41,12 +41,9 @@ export default function ChatPage() {
             </p>
           </div>
 
-          <div className="absolute left-2 top-2">
-            <QuickSettings />
-          </div>
-
-          <div className="absolute right-2 top-2">
-            <ChatSettings />
+          <div className="absolute right-2 top-2 flex items-center space-x-2">
+            <PointsDisplay />
+            <UserLogin />
           </div>
 
           <div className="flex grow flex-col items-center justify-center" />
