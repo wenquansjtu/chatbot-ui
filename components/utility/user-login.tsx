@@ -48,30 +48,27 @@ export const UserLogin: React.FC<UserLoginProps> = ({ className }) => {
 
       if (data.success) {
         if (data.isNewUser) {
-          // New user, create account and login
-          const { error: signUpError } = await supabase.auth.signUp({
-            email: `${address.toLowerCase()}@wallet.local`,
-            password: address.toLowerCase()
+          // New user, use the credentials returned from the API
+          const { error } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password
           })
 
-          if (signUpError) {
-            setMessage("Wallet registration failed: " + signUpError.message)
+          if (error) {
+            setMessage("Wallet login failed: " + error.message)
             return
           }
+        } else {
+          // Existing user, login with standard wallet credentials
+          const { error } = await supabase.auth.signInWithPassword({
+            email: `${address.toLowerCase()}@wallet.local`,
+            password: address.toLowerCase() + "_WALLET_2024"
+          })
 
-          // Wait a bit for account creation to complete
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-
-        // Login user
-        const { error } = await supabase.auth.signInWithPassword({
-          email: `${address.toLowerCase()}@wallet.local`,
-          password: address.toLowerCase()
-        })
-
-        if (error) {
-          setMessage("Wallet login failed: " + error.message)
-          return
+          if (error) {
+            setMessage("Wallet login failed: " + error.message)
+            return
+          }
         }
 
         setIsLoginOpen(false)

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Check if user already exists
+    // Check if user already exists by wallet address
     const { data: existingUser, error: userError } = await supabase
       .from("profiles")
       .select("user_id, username")
@@ -54,66 +54,93 @@ export async function POST(request: NextRequest) {
       // User doesn't exist, create new user
       isNewUser = true
 
+      // Use consistent email format for wallet users
+      const walletEmail = `${address.toLowerCase()}@wallet.local`
+
       // Create user in auth.users table
       const { data: authUser, error: authError } =
         await supabase.auth.admin.createUser({
-          email: `${address.toLowerCase()}@wallet.local`,
-          password: address.toLowerCase(),
+          email: walletEmail,
+          password: address.toLowerCase() + "_WALLET_2024", // 使用固定密码格式
           email_confirm: true
         })
 
       if (authError) {
         console.error("Error creating auth user:", authError)
         return NextResponse.json(
-          { error: "Failed to create user account" },
+          {
+            error: "Failed to create user account",
+            code: authError.code,
+            status: authError.status,
+            message: authError.message,
+            name: authError.name
+          },
+          { status: 500 }
+        )
+      }
+
+      if (!authUser || !authUser.user) {
+        console.error("No user returned from createUser:", authUser)
+        return NextResponse.json(
+          { error: "Failed to create user account (no user returned)" },
           { status: 500 }
         )
       }
 
       userId = authUser.user.id
 
-      // Create profile
-      const { error: profileError } = await supabase.from("profiles").insert({
-        user_id: userId,
-        username: `user_${address.slice(0, 8)}`,
-        wallet_address: address.toLowerCase(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      // Update the auto-created profile with wallet address and username
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          username: `user_${address.slice(0, 8)}`,
+          wallet_address: address.toLowerCase(),
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", userId)
 
       if (profileError) {
-        console.error("Error creating profile:", profileError)
+        console.error("Error updating profile:", profileError)
         return NextResponse.json(
-          { error: "Failed to create user profile" },
+          { error: "Failed to update user profile" },
           { status: 500 }
         )
       }
 
-      // Create home workspace
+      // Get the home workspace (should be auto-created by trigger)
       const { data: workspace, error: workspaceError } = await supabase
         .from("workspaces")
-        .insert({
-          user_id: userId,
-          name: "Home",
-          is_home: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_home", true)
         .single()
 
       if (workspaceError) {
-        console.error("Error creating workspace:", workspaceError)
+        console.error("Error fetching workspace:", workspaceError)
         return NextResponse.json(
-          { error: "Failed to create workspace" },
+          { error: "Failed to fetch user workspace" },
           { status: 500 }
         )
       }
 
+      // Initialize user points manually
+      const { error: pointsError } = await supabase.from("user_points").insert({
+        user_id: userId,
+        points: 0
+      })
+
+      if (pointsError) {
+        console.error("Error initializing user points:", pointsError)
+        // Don't fail the registration, just log the error
+      }
+
+      // For new users, return login credentials
       return NextResponse.json({
         success: true,
         isNewUser: true,
-        workspaceId: workspace.id
+        workspaceId: workspace.id,
+        email: walletEmail,
+        password: address.toLowerCase() + "_WALLET_2024"
       })
     } else if (userError) {
       console.error("Error checking existing user:", userError)
