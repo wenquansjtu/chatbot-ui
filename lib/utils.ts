@@ -156,3 +156,36 @@ export const generateModelUsage = (text: string) => {
 
   return usage
 }
+
+/**
+ * 处理刷新令牌错误
+ * @param error 错误对象
+ * @param supabase Supabase 客户端实例
+ * @param router Next.js 路由器实例
+ * @returns 如果是刷新令牌错误返回 true，否则返回 false
+ */
+export const handleRefreshTokenError = async (
+  error: any,
+  supabase: any,
+  router: any
+): Promise<boolean> => {
+  const isRefreshTokenError =
+    error?.code === "refresh_token_not_found" ||
+    error?.message?.includes("Invalid Refresh Token") ||
+    error?.status === 400 ||
+    error?.message?.includes("JWT") ||
+    error?.message?.includes("refresh_token")
+
+  if (isRefreshTokenError) {
+    console.log("Invalid refresh token detected, clearing session...")
+    try {
+      await supabase.auth.signOut()
+      router.push("/login")
+    } catch (signOutError) {
+      console.error("Error during sign out:", signOutError)
+    }
+    return true
+  }
+
+  return false
+}

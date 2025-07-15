@@ -84,7 +84,30 @@ export default function LoginPage() {
           }
         }
 
-        router.push(`/${data.workspaceId}/chat`)
+        // 等待认证状态更新完成后再跳转
+        const waitForAuthUpdate = async () => {
+          let attempts = 0
+          const maxAttempts = 10
+
+          while (attempts < maxAttempts) {
+            const session = (await supabase.auth.getSession()).data.session
+            if (session) {
+              console.log("Authentication confirmed, redirecting...")
+              router.push(`/${data.workspaceId}/chat`)
+              return
+            }
+
+            console.log(`Waiting for auth update... attempt ${attempts + 1}`)
+            await new Promise(resolve => setTimeout(resolve, 200))
+            attempts++
+          }
+
+          // 如果等待超时，仍然跳转
+          console.log("Auth update timeout, redirecting anyway...")
+          router.push(`/${data.workspaceId}/chat`)
+        }
+
+        waitForAuthUpdate()
       } else {
         setMessage(data.error)
       }

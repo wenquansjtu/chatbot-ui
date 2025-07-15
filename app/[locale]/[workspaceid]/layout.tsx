@@ -72,7 +72,36 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         setLoading(false)
       }
     })()
-  }, [])
+
+    // 监听认证状态变化
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        console.log("User signed in, updating workspace data...")
+        setIsAuthenticated(true)
+        await fetchWorkspaceData(workspaceId)
+      } else if (event === "SIGNED_OUT") {
+        console.log("User signed out, clearing workspace data...")
+        setIsAuthenticated(false)
+        setLoading(false)
+        // 清除工作空间相关数据
+        setSelectedWorkspace(null)
+        setAssistants([])
+        setAssistantImages([])
+        setChats([])
+        setCollections([])
+        setFolders([])
+        setFiles([])
+        setPresets([])
+        setPrompts([])
+        setTools([])
+        setModels([])
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [workspaceId])
 
   useEffect(() => {
     if (isAuthenticated) {

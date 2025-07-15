@@ -4,6 +4,7 @@
 
 import { ChatbotUIContext } from "@/context/context"
 import { supabase } from "@/lib/supabase/browser-client"
+import { handleRefreshTokenError } from "@/lib/utils"
 import { getProfileByUserId } from "@/db/profile"
 import { getWorkspacesByUserId } from "@/db/workspaces"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
@@ -121,69 +122,100 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [toolInUse, setToolInUse] = useState<string>("none")
 
   const fetchStartingData = async () => {
-    const session = (await supabase.auth.getSession()).data.session
+    try {
+      const session = (await supabase.auth.getSession()).data.session
 
-    if (session) {
-      const user = session.user
+      if (session) {
+        const user = session.user
 
-      const profile = await getProfileByUserId(user.id)
-      setProfile(profile)
+        const profile = await getProfileByUserId(user.id)
+        setProfile(profile)
 
-      // 跳过用户设置过程，直接进入聊天
-      // if (!profile.has_onboarded) {
-      //   return router.push("/setup")
-      // }
+        // 跳过用户设置过程，直接进入聊天
+        // if (!profile.has_onboarded) {
+        //   return router.push("/setup")
+        // }
 
-      const workspaces = await getWorkspacesByUserId(user.id)
-      setWorkspaces(workspaces)
+        const workspaces = await getWorkspacesByUserId(user.id)
+        setWorkspaces(workspaces)
 
-      for (const workspace of workspaces) {
-        let workspaceImageUrl = ""
+        for (const workspace of workspaces) {
+          let workspaceImageUrl = ""
 
-        if (workspace.image_path) {
-          workspaceImageUrl =
-            (await getWorkspaceImageFromStorage(workspace.image_path)) || ""
+          if (workspace.image_path) {
+            workspaceImageUrl =
+              (await getWorkspaceImageFromStorage(workspace.image_path)) || ""
+          }
+
+          if (workspaceImageUrl) {
+            const response = await fetch(workspaceImageUrl)
+            const blob = await response.blob()
+            const base64 = await convertBlobToBase64(blob)
+
+            setWorkspaceImages(prev => [
+              ...prev,
+              {
+                workspaceId: workspace.id,
+                path: workspace.image_path,
+                base64: base64,
+                url: workspaceImageUrl
+              }
+            ])
+          }
         }
 
-        if (workspaceImageUrl) {
-          const response = await fetch(workspaceImageUrl)
-          const blob = await response.blob()
-          const base64 = await convertBlobToBase64(blob)
+        return profile
+      }
+    } catch (error: any) {
+      console.error("Error in fetchStartingData:", error)
 
-          setWorkspaceImages(prev => [
-            ...prev,
-            {
-              workspaceId: workspace.id,
-              path: workspace.image_path,
-              base64: base64,
-              url: workspaceImageUrl
-            }
-          ])
-        }
+      // 使用工具函数处理刷新令牌错误
+      const isRefreshTokenError = await handleRefreshTokenError(
+        error,
+        supabase,
+        router
+      )
+      if (isRefreshTokenError) {
+        return null
       }
 
-      return profile
+      // 重新抛出其他错误
+      throw error
     }
   }
 
   useEffect(() => {
     ;(async () => {
-      const profile = await fetchStartingData()
+      try {
+        const profile = await fetchStartingData()
 
-      if (profile) {
-        const hostedModelRes = await fetchHostedModels(profile)
-        if (!hostedModelRes) return
+        if (profile) {
+          const hostedModelRes = await fetchHostedModels(profile)
+          if (!hostedModelRes) return
 
-        setEnvKeyMap(hostedModelRes.envKeyMap)
-        setAvailableHostedModels(hostedModelRes.hostedModels)
+          setEnvKeyMap(hostedModelRes.envKeyMap)
+          setAvailableHostedModels(hostedModelRes.hostedModels)
 
-        if (
-          profile["openrouter_api_key"] ||
-          hostedModelRes.envKeyMap["openrouter"]
-        ) {
-          const openRouterModels = await fetchOpenRouterModels()
-          if (!openRouterModels) return
-          setAvailableOpenRouterModels(openRouterModels)
+          if (
+            profile["openrouter_api_key"] ||
+            hostedModelRes.envKeyMap["openrouter"]
+          ) {
+            const openRouterModels = await fetchOpenRouterModels()
+            if (!openRouterModels) return
+            setAvailableOpenRouterModels(openRouterModels)
+          }
+        }
+      } catch (error: any) {
+        console.error("Error fetching starting data:", error)
+
+        // 使用工具函数处理刷新令牌错误
+        const isRefreshTokenError = await handleRefreshTokenError(
+          error,
+          supabase,
+          router
+        )
+        if (isRefreshTokenError) {
+          return
         }
       }
 
@@ -199,21 +231,30 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
-        // 用户登录后重新获取数据
-        const profile = await fetchStartingData()
+        try {
+          // 用户登录后重新获取数据
+          const profile = await fetchStartingData()
 
-        if (profile) {
-          const hostedModelRes = await fetchHostedModels(profile)
-          if (hostedModelRes) {
-            setEnvKeyMap(hostedModelRes.envKeyMap)
-            setAvailableHostedModels(hostedModelRes.hostedModels)
+          if (profile) {
+            const hostedModelRes = await fetchHostedModels(profile)
+            if (hostedModelRes) {
+              setEnvKeyMap(hostedModelRes.envKeyMap)
+              setAvailableHostedModels(hostedModelRes.hostedModels)
+            }
           }
+        } catch (error: any) {
+          console.error("Error in auth state change handler:", error)
+
+          // 使用工具函数处理刷新令牌错误
+          await handleRefreshTokenError(error, supabase, router)
         }
       } else if (event === "SIGNED_OUT") {
         // 用户登出后清除状态
         setProfile(null)
         setWorkspaces([])
         setWorkspaceImages([])
+      } else if (event === "TOKEN_REFRESHED") {
+        console.log("Token refreshed successfully")
       }
     })
 
