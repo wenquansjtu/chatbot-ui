@@ -89,11 +89,12 @@ export async function POST(request: NextRequest) {
 
       userId = authUser.user.id
 
-      // Update the auto-created profile with wallet address and username
+      // Update the auto-created profile with wallet address, username, and display name
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
           username: `user_${address.slice(0, 8)}`,
+          display_name: `User ${address.slice(0, 6)}...`,
           wallet_address: address.toLowerCase(),
           updated_at: new Date().toISOString()
         })

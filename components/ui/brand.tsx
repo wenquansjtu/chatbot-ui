@@ -6,7 +6,7 @@ interface BrandProps {
   theme?: "dark" | "light"
 }
 
-export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
+export const Brand: FC<BrandProps> = ({ theme = "light" }) => {
   return (
     <div className="flex cursor-pointer flex-col items-center">
       <div className="text-4xl font-bold tracking-wide">AgentNet</div>

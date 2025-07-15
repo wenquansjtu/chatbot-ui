@@ -3,28 +3,24 @@
 "use client"
 
 import { ChatbotUIContext } from "@/context/context"
-import { getProfileByUserId } from "@/db/profile"
-import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
-import { getWorkspacesByUserId } from "@/db/workspaces"
-import { convertBlobToBase64 } from "@/lib/blob-to-b64"
-import {
-  fetchHostedModels,
-  fetchOllamaModels,
-  fetchOpenRouterModels
-} from "@/lib/models/fetch-models"
 import { supabase } from "@/lib/supabase/browser-client"
-import { Tables } from "@/supabase/types"
-import {
-  ChatFile,
-  ChatMessage,
-  ChatSettings,
-  LLM,
-  MessageImage,
-  OpenRouterLLM,
-  WorkspaceImage
-} from "@/types"
-import { AssistantImage } from "@/types/images/assistant-image"
+import { getProfileByUserId } from "@/db/profile"
+import { getWorkspacesByUserId } from "@/db/workspaces"
+import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
+import { convertBlobToBase64 } from "@/lib/blob-to-b64"
+import { fetchHostedModels } from "@/lib/models/fetch-models"
+import { fetchOpenRouterModels } from "@/lib/models/fetch-models"
+import { fetchOllamaModels } from "@/lib/models/fetch-models"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
+import { LLM } from "@/types/llms"
+import { OpenRouterLLM } from "@/types/llms"
+import { ChatSettings } from "@/types/chat"
+import { ChatMessage } from "@/types/chat"
+import { ChatFile } from "@/types/chat"
+import { MessageImage } from "@/types/chat"
+import { WorkspaceImage } from "@/types/workspace"
+import { AssistantImage } from "@/types/assistant"
+import { Tables } from "@/supabase/types"
 import { useRouter } from "next/navigation"
 import { FC, useEffect, useState } from "react"
 
@@ -124,35 +120,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [selectedTools, setSelectedTools] = useState<Tables<"tools">[]>([])
   const [toolInUse, setToolInUse] = useState<string>("none")
 
-  useEffect(() => {
-    ;(async () => {
-      const profile = await fetchStartingData()
-
-      if (profile) {
-        const hostedModelRes = await fetchHostedModels(profile)
-        if (!hostedModelRes) return
-
-        setEnvKeyMap(hostedModelRes.envKeyMap)
-        setAvailableHostedModels(hostedModelRes.hostedModels)
-
-        if (
-          profile["openrouter_api_key"] ||
-          hostedModelRes.envKeyMap["openrouter"]
-        ) {
-          const openRouterModels = await fetchOpenRouterModels()
-          if (!openRouterModels) return
-          setAvailableOpenRouterModels(openRouterModels)
-        }
-      }
-
-      if (process.env.NEXT_PUBLIC_OLLAMA_URL) {
-        const localModels = await fetchOllamaModels()
-        if (!localModels) return
-        setAvailableLocalModels(localModels)
-      }
-    })()
-  }, [])
-
   const fetchStartingData = async () => {
     const session = (await supabase.auth.getSession()).data.session
 
@@ -162,9 +129,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       const profile = await getProfileByUserId(user.id)
       setProfile(profile)
 
-      if (!profile.has_onboarded) {
-        return router.push("/setup")
-      }
+      // 跳过用户设置过程，直接进入聊天
+      // if (!profile.has_onboarded) {
+      //   return router.push("/setup")
+      // }
 
       const workspaces = await getWorkspacesByUserId(user.id)
       setWorkspaces(workspaces)
@@ -197,6 +165,60 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       return profile
     }
   }
+
+  useEffect(() => {
+    ;(async () => {
+      const profile = await fetchStartingData()
+
+      if (profile) {
+        const hostedModelRes = await fetchHostedModels(profile)
+        if (!hostedModelRes) return
+
+        setEnvKeyMap(hostedModelRes.envKeyMap)
+        setAvailableHostedModels(hostedModelRes.hostedModels)
+
+        if (
+          profile["openrouter_api_key"] ||
+          hostedModelRes.envKeyMap["openrouter"]
+        ) {
+          const openRouterModels = await fetchOpenRouterModels()
+          if (!openRouterModels) return
+          setAvailableOpenRouterModels(openRouterModels)
+        }
+      }
+
+      if (process.env.NEXT_PUBLIC_OLLAMA_URL) {
+        const localModels = await fetchOllamaModels()
+        if (!localModels) return
+        setAvailableLocalModels(localModels)
+      }
+    })()
+
+    // 监听认证状态变化
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        // 用户登录后重新获取数据
+        const profile = await fetchStartingData()
+
+        if (profile) {
+          const hostedModelRes = await fetchHostedModels(profile)
+          if (hostedModelRes) {
+            setEnvKeyMap(hostedModelRes.envKeyMap)
+            setAvailableHostedModels(hostedModelRes.hostedModels)
+          }
+        }
+      } else if (event === "SIGNED_OUT") {
+        // 用户登出后清除状态
+        setProfile(null)
+        setWorkspaces([])
+        setWorkspaceImages([])
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <ChatbotUIContext.Provider
