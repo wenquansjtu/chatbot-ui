@@ -12,75 +12,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import {
-  IconLogout,
-  IconUser,
-  IconWallet,
-  IconEdit,
-  IconCheck,
-  IconX
-} from "@tabler/icons-react"
+import { IconLogout, IconUser, IconWallet } from "@tabler/icons-react"
 import { MetaMaskLogin } from "@/components/auth/metamask-login"
-import { Input } from "@/components/ui/input"
 
 interface UserLoginProps {
   className?: string
 }
 
 export const UserLogin: React.FC<UserLoginProps> = ({ className }) => {
-  const { profile, setProfile } = useContext(ChatbotUIContext)
+  const { profile } = useContext(ChatbotUIContext)
   const router = useRouter()
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [message, setMessage] = useState("")
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [newDisplayName, setNewDisplayName] = useState("")
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push("/login")
-  }
-
-  const handleEditName = () => {
-    setNewDisplayName(profile?.display_name || "")
-    setIsEditingName(true)
-  }
-
-  const handleSaveName = async () => {
-    if (!profile || !newDisplayName.trim()) return
-
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          display_name: newDisplayName.trim(),
-          updated_at: new Date().toISOString()
-        })
-        .eq("user_id", profile.user_id)
-
-      if (error) {
-        setMessage("Failed to update display name: " + error.message)
-        return
-      }
-
-      // 更新本地状态
-      setProfile({
-        ...profile,
-        display_name: newDisplayName.trim()
-      })
-
-      setIsEditingName(false)
-      setMessage("Display name updated successfully!")
-
-      // 清除消息
-      setTimeout(() => setMessage(""), 3000)
-    } catch (error: any) {
-      setMessage("Failed to update display name: " + error.message)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setIsEditingName(false)
-    setNewDisplayName("")
   }
 
   const handleMetaMaskLogin = async (
@@ -176,15 +123,6 @@ export const UserLogin: React.FC<UserLoginProps> = ({ className }) => {
             )}
           </DropdownMenuItem>
 
-          {/* 编辑展示名 */}
-          <DropdownMenuItem
-            onClick={handleEditName}
-            className="flex items-center gap-2"
-          >
-            <IconEdit size={16} />
-            <span>Edit Display Name</span>
-          </DropdownMenuItem>
-
           <DropdownMenuItem onClick={handleLogout} className="text-red-600">
             <IconLogout className="mr-2 size-4" />
             <span>Logout</span>
@@ -236,62 +174,6 @@ export const UserLogin: React.FC<UserLoginProps> = ({ className }) => {
             >
               Cancel
             </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 编辑展示名对话框 */}
-      {isEditingName && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background mx-4 w-full max-w-sm rounded-lg border p-6">
-            <div className="mb-6 text-center">
-              <h2 className="mb-2 text-xl font-bold">Edit Display Name</h2>
-              <p className="text-muted-foreground text-sm">
-                Update your display name
-              </p>
-            </div>
-
-            <div className="mb-4">
-              <Input
-                value={newDisplayName}
-                onChange={e => setNewDisplayName(e.target.value)}
-                placeholder="Enter your display name"
-                className="w-full"
-                autoFocus
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    handleSaveName()
-                  } else if (e.key === "Escape") {
-                    handleCancelEdit()
-                  }
-                }}
-              />
-            </div>
-
-            {message && (
-              <p className="mb-4 text-center text-sm text-green-500">
-                {message}
-              </p>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCancelEdit}
-                className="flex-1"
-              >
-                <IconX className="mr-2 size-4" />
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveName}
-                className="flex-1"
-                disabled={!newDisplayName.trim()}
-              >
-                <IconCheck className="mr-2 size-4" />
-                Save
-              </Button>
-            </div>
           </div>
         </div>
       )}

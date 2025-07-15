@@ -71,10 +71,12 @@ export async function buildFinalMessages(
 
     if (nextChatMessageFileItems.length > 0) {
       const findFileItems = nextChatMessageFileItems
-        .map(fileItemId =>
+        .map((fileItemId: string) =>
           chatFileItems.find(chatFileItem => chatFileItem.id === fileItemId)
         )
-        .filter(item => item !== undefined) as Tables<"file_items">[]
+        .filter(
+          (item: Tables<"file_items"> | undefined) => item !== undefined
+        ) as Tables<"file_items">[]
 
       const retrievalText = buildRetrievalText(findFileItems)
 
@@ -132,7 +134,7 @@ export async function buildFinalMessages(
           type: "text",
           text: message.content
         },
-        ...message.image_paths.map(path => {
+        ...message.image_paths.map((path: string) => {
           let formedUrl = ""
 
           if (path.startsWith("data")) {

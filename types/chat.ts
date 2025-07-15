@@ -1,5 +1,5 @@
 import { Tables } from "@/supabase/types"
-import { ChatMessage, LLMID } from "."
+import { LLMID } from "."
 
 export interface ChatSettings {
   model: LLMID
@@ -14,7 +14,7 @@ export interface ChatSettings {
 export interface ChatPayload {
   chatSettings: ChatSettings
   workspaceInstructions: string
-  chatMessages: ChatMessage[]
+  chatMessages: any[] // Using any[] to be compatible with both ChatMessage and Tables<"messages">
   assistant: Tables<"assistants"> | null
   messageFileItems: Tables<"file_items">[]
   chatFileItems: Tables<"file_items">[]
