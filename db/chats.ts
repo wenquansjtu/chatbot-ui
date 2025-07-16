@@ -18,11 +18,12 @@ export const getChatsByWorkspaceId = async (workspaceId: string) => {
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
 
-  if (!chats) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching chats:", error)
+    return []
   }
 
-  return chats
+  return chats || []
 }
 
 export const createChat = async (chat: TablesInsert<"chats">) => {

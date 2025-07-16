@@ -30,11 +30,12 @@ export const getCollectionWorkspacesByWorkspaceId = async (
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching collection workspaces:", error)
+    return { id: workspaceId, name: "", collections: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", collections: [] }
 }
 
 export const getCollectionWorkspacesByCollectionId = async (

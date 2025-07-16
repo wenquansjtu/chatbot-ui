@@ -28,11 +28,12 @@ export const getToolWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching tool workspaces:", error)
+    return { id: workspaceId, name: "", tools: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", tools: [] }
 }
 
 export const getToolWorkspacesByToolId = async (toolId: string) => {

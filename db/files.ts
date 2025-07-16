@@ -31,11 +31,12 @@ export const getFileWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching file workspaces:", error)
+    return { id: workspaceId, name: "", files: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", files: [] }
 }
 
 export const getFileWorkspacesByFileId = async (fileId: string) => {

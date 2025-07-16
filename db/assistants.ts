@@ -30,11 +30,12 @@ export const getAssistantWorkspacesByWorkspaceId = async (
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching assistant workspaces:", error)
+    return { id: workspaceId, name: "", assistants: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", assistants: [] }
 }
 
 export const getAssistantWorkspacesByAssistantId = async (

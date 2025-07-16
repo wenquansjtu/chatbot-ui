@@ -7,11 +7,12 @@ export const getFoldersByWorkspaceId = async (workspaceId: string) => {
     .select("*")
     .eq("workspace_id", workspaceId)
 
-  if (!folders) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching folders:", error)
+    return []
   }
 
-  return folders
+  return folders || []
 }
 
 export const createFolder = async (folder: TablesInsert<"folders">) => {

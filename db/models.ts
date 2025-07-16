@@ -28,11 +28,12 @@ export const getModelWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching model workspaces:", error)
+    return { id: workspaceId, name: "", models: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", models: [] }
 }
 
 export const getModelWorkspacesByModelId = async (modelId: string) => {

@@ -28,11 +28,12 @@ export const getPromptWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching prompt workspaces:", error)
+    return { id: workspaceId, name: "", prompts: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", prompts: [] }
 }
 
 export const getPromptWorkspacesByPromptId = async (promptId: string) => {

@@ -23,8 +23,9 @@ export const getWorkspaceById = async (workspaceId: string) => {
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching workspace:", error)
+    return null
   }
 
   return workspace
@@ -37,11 +38,12 @@ export const getWorkspacesByUserId = async (userId: string) => {
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
-  if (!workspaces) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching workspaces:", error)
+    return []
   }
 
-  return workspaces
+  return workspaces || []
 }
 
 export const createWorkspace = async (

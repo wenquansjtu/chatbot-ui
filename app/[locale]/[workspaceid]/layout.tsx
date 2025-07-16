@@ -125,88 +125,126 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const fetchWorkspaceData = async (workspaceId: string) => {
     setLoading(true)
 
-    const workspace = await getWorkspaceById(workspaceId)
-    setSelectedWorkspace(workspace)
+    try {
+      const workspace = await getWorkspaceById(workspaceId)
+      if (!workspace) {
+        console.error("Workspace not found:", workspaceId)
+        setLoading(false)
+        return
+      }
+      setSelectedWorkspace(workspace)
 
-    const assistantData = await getAssistantWorkspacesByWorkspaceId(workspaceId)
-    setAssistants(assistantData.assistants)
+      const assistantData =
+        await getAssistantWorkspacesByWorkspaceId(workspaceId)
+      setAssistants(assistantData.assistants)
 
-    for (const assistant of assistantData.assistants) {
-      let url = ""
+      for (const assistant of assistantData.assistants) {
+        let url = ""
 
-      if (assistant.image_path) {
-        url = (await getAssistantImageFromStorage(assistant.image_path)) || ""
+        if (assistant.image_path) {
+          url = (await getAssistantImageFromStorage(assistant.image_path)) || ""
+        }
+
+        if (url) {
+          try {
+            const response = await fetch(url)
+            const blob = await response.blob()
+            const base64 = await convertBlobToBase64(blob)
+
+            setAssistantImages(prev => [
+              ...prev,
+              {
+                assistantId: assistant.id,
+                path: assistant.image_path,
+                base64,
+                url
+              }
+            ])
+          } catch (imageError) {
+            console.error("Error loading assistant image:", imageError)
+            setAssistantImages(prev => [
+              ...prev,
+              {
+                assistantId: assistant.id,
+                path: assistant.image_path,
+                base64: "",
+                url: ""
+              }
+            ])
+          }
+        } else {
+          setAssistantImages(prev => [
+            ...prev,
+            {
+              assistantId: assistant.id,
+              path: assistant.image_path,
+              base64: "",
+              url
+            }
+          ])
+        }
       }
 
-      if (url) {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        const base64 = await convertBlobToBase64(blob)
+      const chats = await getChatsByWorkspaceId(workspaceId)
+      setChats(chats)
 
-        setAssistantImages(prev => [
-          ...prev,
-          {
-            assistantId: assistant.id,
-            path: assistant.image_path,
-            base64,
-            url
-          }
-        ])
-      } else {
-        setAssistantImages(prev => [
-          ...prev,
-          {
-            assistantId: assistant.id,
-            path: assistant.image_path,
-            base64: "",
-            url
-          }
-        ])
+      const collectionData =
+        await getCollectionWorkspacesByWorkspaceId(workspaceId)
+      setCollections(collectionData.collections)
+
+      const folders = await getFoldersByWorkspaceId(workspaceId)
+      setFolders(folders)
+
+      const fileData = await getFileWorkspacesByWorkspaceId(workspaceId)
+      setFiles(fileData.files)
+
+      const presetData = await getPresetWorkspacesByWorkspaceId(workspaceId)
+      setPresets(presetData.presets)
+
+      const promptData = await getPromptWorkspacesByWorkspaceId(workspaceId)
+      setPrompts(promptData.prompts)
+
+      const toolData = await getToolWorkspacesByWorkspaceId(workspaceId)
+      setTools(toolData.tools)
+
+      const modelData = await getModelWorkspacesByWorkspaceId(workspaceId)
+      setModels(modelData.models)
+
+      setChatSettings({
+        model: (searchParams.get("model") ||
+          workspace?.default_model ||
+          "gpt-4-1106-preview") as LLMID,
+        prompt:
+          workspace?.default_prompt ||
+          "You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.",
+        temperature: workspace?.default_temperature || 0.5,
+        contextLength: workspace?.default_context_length || 4096,
+        includeProfileContext: workspace?.include_profile_context || true,
+        includeWorkspaceInstructions:
+          workspace?.include_workspace_instructions || true,
+        embeddingsProvider:
+          (workspace?.embeddings_provider as "openai" | "local") || "openai"
+      })
+    } catch (error: any) {
+      console.error("Error fetching workspace data:", error)
+
+      // 检查是否是认证错误
+      if (
+        error?.status === 401 ||
+        error?.message?.includes("JWT") ||
+        error?.message?.includes("refresh_token")
+      ) {
+        console.log("Authentication error detected, redirecting to login...")
+        await supabase.auth.signOut()
+        router.push("/login")
+        return
       }
+
+      // 其他错误，显示错误信息但继续加载
+      console.error("Workspace data fetch failed:", error)
+    } finally {
+      setLoading(false)
     }
-
-    const chats = await getChatsByWorkspaceId(workspaceId)
-    setChats(chats)
-
-    const collectionData =
-      await getCollectionWorkspacesByWorkspaceId(workspaceId)
-    setCollections(collectionData.collections)
-
-    const folders = await getFoldersByWorkspaceId(workspaceId)
-    setFolders(folders)
-
-    const fileData = await getFileWorkspacesByWorkspaceId(workspaceId)
-    setFiles(fileData.files)
-
-    const presetData = await getPresetWorkspacesByWorkspaceId(workspaceId)
-    setPresets(presetData.presets)
-
-    const promptData = await getPromptWorkspacesByWorkspaceId(workspaceId)
-    setPrompts(promptData.prompts)
-
-    const toolData = await getToolWorkspacesByWorkspaceId(workspaceId)
-    setTools(toolData.tools)
-
-    const modelData = await getModelWorkspacesByWorkspaceId(workspaceId)
-    setModels(modelData.models)
-
-    setChatSettings({
-      model: (searchParams.get("model") ||
-        workspace?.default_model ||
-        "gpt-4-1106-preview") as LLMID,
-      prompt:
-        workspace?.default_prompt ||
-        "You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.",
-      temperature: workspace?.default_temperature || 0.5,
-      contextLength: workspace?.default_context_length || 4096,
-      includeProfileContext: workspace?.include_profile_context || true,
-      includeWorkspaceInstructions:
-        workspace?.include_workspace_instructions || true,
-      embeddingsProvider:
-        (workspace?.embeddings_provider as "openai" | "local") || "openai"
-    })
-
-    setLoading(false)
   }
 
   if (loading) {

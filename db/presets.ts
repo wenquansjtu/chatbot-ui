@@ -28,11 +28,12 @@ export const getPresetWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .eq("id", workspaceId)
     .single()
 
-  if (!workspace) {
-    throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching preset workspaces:", error)
+    return { id: workspaceId, name: "", presets: [] }
   }
 
-  return workspace
+  return workspace || { id: workspaceId, name: "", presets: [] }
 }
 
 export const getPresetWorkspacesByPresetId = async (presetId: string) => {
