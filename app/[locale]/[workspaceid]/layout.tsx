@@ -17,7 +17,7 @@ import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { supabase } from "@/lib/supabase/browser-client"
 import { LLMID } from "@/types"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ReactNode, useContext, useEffect, useState } from "react"
+import { ReactNode, useContext, useEffect, useState, useRef } from "react"
 import Loading from "../loading"
 
 interface WorkspaceLayoutProps {
@@ -59,6 +59,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const dataLoadedRef = useRef(false)
 
   useEffect(() => {
     ;(async () => {
@@ -66,7 +67,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
       if (session) {
         setIsAuthenticated(true)
-        await fetchWorkspaceData(workspaceId)
+        if (!dataLoadedRef.current) {
+          await fetchWorkspaceData(workspaceId)
+          dataLoadedRef.current = true
+        }
       } else {
         // 未登录用户也可以访问，但不会加载工作空间数据
         setLoading(false)
@@ -80,10 +84,14 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       if (event === "SIGNED_IN" && session) {
         console.log("User signed in, updating workspace data...")
         setIsAuthenticated(true)
-        await fetchWorkspaceData(workspaceId)
+        if (!dataLoadedRef.current) {
+          await fetchWorkspaceData(workspaceId)
+          dataLoadedRef.current = true
+        }
       } else if (event === "SIGNED_OUT") {
         console.log("User signed out, clearing workspace data...")
         setIsAuthenticated(false)
+        dataLoadedRef.current = false
         setLoading(false)
         // 清除工作空间相关数据
         setSelectedWorkspace(null)
@@ -103,24 +111,20 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     return () => subscription.unsubscribe()
   }, [workspaceId])
 
+  // 当workspaceId变化时，重置数据加载状态并清理临时状态
   useEffect(() => {
-    if (isAuthenticated) {
-      ;(async () => await fetchWorkspaceData(workspaceId))()
-
-      setUserInput("")
-      setChatMessages([])
-      setSelectedChat(null)
-
-      setIsGenerating(false)
-      setFirstTokenReceived(false)
-
-      setChatFiles([])
-      setChatImages([])
-      setNewMessageFiles([])
-      setNewMessageImages([])
-      setShowFilesDisplay(false)
-    }
-  }, [workspaceId, isAuthenticated])
+    dataLoadedRef.current = false
+    setUserInput("")
+    setChatMessages([])
+    setSelectedChat(null)
+    setIsGenerating(false)
+    setFirstTokenReceived(false)
+    setChatFiles([])
+    setChatImages([])
+    setNewMessageFiles([])
+    setNewMessageImages([])
+    setShowFilesDisplay(false)
+  }, [workspaceId])
 
   const fetchWorkspaceData = async (workspaceId: string) => {
     setLoading(true)
