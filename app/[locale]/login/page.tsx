@@ -62,23 +62,69 @@ export default function LoginPage() {
       if (data.success) {
         if (data.isNewUser) {
           // New user, use the credentials returned from the API
-          const { error } = await supabase.auth.signInWithPassword({
-            email: data.email,
-            password: data.password
-          })
+          console.log("New user detected, attempting login...")
 
-          if (error) {
-            setMessage("Wallet login failed: " + error.message)
+          // 为新用户添加重试机制
+          let loginSuccess = false
+          let attempts = 0
+          const maxAttempts = 3
+
+          while (!loginSuccess && attempts < maxAttempts) {
+            try {
+              const { error } = await supabase.auth.signInWithPassword({
+                email: data.email,
+                password: data.password
+              })
+
+              if (error) {
+                console.log(
+                  `Login attempt ${attempts + 1} failed:`,
+                  error.message
+                )
+
+                // 如果是刷新令牌错误，等待更长时间
+                if (
+                  error.message.includes("refresh_token") ||
+                  error.code === "refresh_token_not_found"
+                ) {
+                  console.log("Refresh token error detected, waiting longer...")
+                  await new Promise(resolve => setTimeout(resolve, 1000))
+                } else {
+                  await new Promise(resolve => setTimeout(resolve, 500))
+                }
+
+                attempts++
+              } else {
+                loginSuccess = true
+                console.log("New user login successful")
+              }
+            } catch (loginError: any) {
+              console.log(
+                `Login attempt ${attempts + 1} error:`,
+                loginError.message
+              )
+              await new Promise(resolve => setTimeout(resolve, 500))
+              attempts++
+            }
+          }
+
+          if (!loginSuccess) {
+            setMessage(
+              "Login failed after multiple attempts. Please try again."
+            )
             return
           }
         } else {
           // Existing user, login with standard wallet credentials
+          console.log("Existing user detected, attempting login...")
+
           const { error } = await supabase.auth.signInWithPassword({
             email: `${address.toLowerCase()}@wallet.local`,
             password: address.toLowerCase() + "_WALLET_2024"
           })
 
           if (error) {
+            console.error("Existing user login error:", error)
             setMessage("Wallet login failed: " + error.message)
             return
           }
@@ -87,19 +133,25 @@ export default function LoginPage() {
         // 等待认证状态更新完成后再跳转
         const waitForAuthUpdate = async () => {
           let attempts = 0
-          const maxAttempts = 10
+          const maxAttempts = 15 // 增加最大尝试次数
 
           while (attempts < maxAttempts) {
-            const session = (await supabase.auth.getSession()).data.session
-            if (session) {
-              console.log("Authentication confirmed, redirecting...")
-              router.push(`/${data.workspaceId}/chat`)
-              return
-            }
+            try {
+              const session = (await supabase.auth.getSession()).data.session
+              if (session) {
+                console.log("Authentication confirmed, redirecting...")
+                router.push(`/${data.workspaceId}/chat`)
+                return
+              }
 
-            console.log(`Waiting for auth update... attempt ${attempts + 1}`)
-            await new Promise(resolve => setTimeout(resolve, 200))
-            attempts++
+              console.log(`Waiting for auth update... attempt ${attempts + 1}`)
+              await new Promise(resolve => setTimeout(resolve, 300)) // 增加等待时间
+              attempts++
+            } catch (sessionError: any) {
+              console.log(`Session check error:`, sessionError.message)
+              await new Promise(resolve => setTimeout(resolve, 300))
+              attempts++
+            }
           }
 
           // 如果等待超时，仍然跳转
@@ -112,6 +164,7 @@ export default function LoginPage() {
         setMessage(data.error)
       }
     } catch (error: any) {
+      console.error("Wallet login error:", error)
       setMessage("Wallet login failed: " + error.message)
     }
   }

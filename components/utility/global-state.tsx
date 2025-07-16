@@ -169,7 +169,51 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     } catch (error: any) {
       console.error("Error in fetchStartingData:", error)
 
-      // 使用工具函数处理刷新令牌错误
+      // 对于新用户，给更多时间让认证状态稳定
+      const isNewUserError =
+        error?.message?.includes("refresh_token") ||
+        error?.code === "refresh_token_not_found" ||
+        error?.status === 400
+
+      if (isNewUserError) {
+        console.log(
+          "Potential new user refresh token error, waiting before clearing session..."
+        )
+
+        // 等待一段时间再检查，给新用户更多时间
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        // 再次检查会话状态
+        const session = (await supabase.auth.getSession()).data.session
+        if (!session) {
+          console.log(
+            "Session still invalid after waiting, clearing session..."
+          )
+          await supabase.auth.signOut()
+          router.push("/login")
+          return null
+        } else {
+          console.log("Session became valid after waiting, continuing...")
+          // 重新尝试获取数据
+          try {
+            const profile = await getProfileByUserId(session.user.id)
+            setProfile(profile)
+
+            const workspaces = await getWorkspacesByUserId(session.user.id)
+            setWorkspaces(workspaces)
+
+            return profile
+          } catch (retryError: any) {
+            console.error("Error in retry attempt:", retryError)
+            // 如果重试仍然失败，则清除会话
+            await supabase.auth.signOut()
+            router.push("/login")
+            return null
+          }
+        }
+      }
+
+      // 使用工具函数处理其他刷新令牌错误
       const isRefreshTokenError = await handleRefreshTokenError(
         error,
         supabase,
