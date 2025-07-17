@@ -11,7 +11,7 @@ const GPT4o: LLM = {
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 5,
     outputCost: 15
@@ -27,7 +27,7 @@ const GPT4Turbo: LLM = {
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 10,
     outputCost: 30
@@ -43,7 +43,7 @@ const GPT4Vision: LLM = {
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 10
   }
@@ -58,7 +58,7 @@ const GPT4: LLM = {
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 30,
     outputCost: 60
@@ -74,7 +74,7 @@ const GPT3_5Turbo: LLM = {
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.5,
     outputCost: 1.5

@@ -23,7 +23,7 @@ const MIXTRAL: LLM = {
   platformLink: MISTRAL_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 2,
     outputCost: 6
@@ -39,7 +39,7 @@ const MISTRAL_MEDIUM: LLM = {
   platformLink: MISTRAL_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 2.7,
     outputCost: 8.1
@@ -55,7 +55,7 @@ const MISTRAL_LARGE: LLM = {
   platformLink: MISTRAL_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 8,
     outputCost: 24

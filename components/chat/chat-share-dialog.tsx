@@ -175,7 +175,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
           ? `${models.slice(0, 2).join(" and ")} and ${models[2]}${models.length > 3 ? ` and ${models.length - 3} more` : ""}`
           : models.join(" and ")
 
-      const statsText = `Today, I used models like ${modelsText} through AgentNet, totaling a consumption of $${totalCost.toFixed(4)} USD.`
+      const statsText = `Today, I used models like ${modelsText} through AgentNet, totaling a consumption of $${totalCost.toFixed(4)} USD1.`
 
       // 文本换行处理
       const maxWidth = finalCanvas.width - 2 * padding

@@ -411,7 +411,7 @@ export const Message: FC<MessageProps> = ({
                 </span>
                 <span className="text-xs font-medium">
                   {totalTokens.toLocaleString()} tokens • $
-                  {totalCost.toFixed(4)} USD
+                  {totalCost.toFixed(4)} USD1
                 </span>
               </summary>
               <div className="mt-3 space-y-3">
@@ -432,7 +432,7 @@ export const Message: FC<MessageProps> = ({
                           {usage.tokens?.toLocaleString() || 0} tokens
                         </div>
                         <div className="text-xs text-gray-500">
-                          ${(usage.cost || 0).toFixed(4)} USD
+                          ${(usage.cost || 0).toFixed(4)} USD1
                         </div>
                       </div>
                     </div>
@@ -450,7 +450,7 @@ export const Message: FC<MessageProps> = ({
                         {totalTokens.toLocaleString()} tokens
                       </div>
                       <div className="text-xs text-gray-600">
-                        ${totalCost.toFixed(4)} USD
+                        ${totalCost.toFixed(4)} USD1
                       </div>
                     </div>
                   </div>

@@ -14,7 +14,7 @@ const CLAUDE_2: LLM = {
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 8,
     outputCost: 24
@@ -30,7 +30,7 @@ const CLAUDE_INSTANT: LLM = {
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.8,
     outputCost: 2.4
@@ -46,7 +46,7 @@ const CLAUDE_3_HAIKU: LLM = {
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.25,
     outputCost: 1.25
@@ -62,7 +62,7 @@ const CLAUDE_3_SONNET: LLM = {
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 3,
     outputCost: 15
@@ -78,7 +78,7 @@ const CLAUDE_3_OPUS: LLM = {
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 15,
     outputCost: 75
@@ -94,7 +94,7 @@ const CLAUDE_3_5_SONNET: LLM = {
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: true,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 3,
     outputCost: 15

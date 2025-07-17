@@ -10,7 +10,7 @@ const LLaMA3_8B: LLM = {
   platformLink: GROQ_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.05,
     outputCost: 0.1
@@ -25,7 +25,7 @@ const LLaMA3_70B: LLM = {
   platformLink: GROQ_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.59,
     outputCost: 0.79
@@ -40,7 +40,7 @@ const MIXTRAL_8X7B: LLM = {
   platformLink: GROQ_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.27,
     outputCost: 0.27
@@ -55,7 +55,7 @@ const GEMMA_7B_IT: LLM = {
   platformLink: GROQ_PLATORM_LINK,
   imageInput: false,
   pricing: {
-    currency: "USD",
+    currency: "USD1",
     unit: "1M tokens",
     inputCost: 0.15,
     outputCost: 0.15

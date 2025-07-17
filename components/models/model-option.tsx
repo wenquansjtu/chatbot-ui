@@ -12,7 +12,7 @@ interface ModelOptionProps {
 export const ModelOption: FC<ModelOptionProps> = ({ model, onSelect }) => {
   // 新增：将 USD 替换为 USD1
   const displayCurrency = (currency: string) =>
-    currency === "USD" ? "USD1" : currency
+    currency === "USD1" ? "USD1" : currency
 
   return (
     <WithTooltip
