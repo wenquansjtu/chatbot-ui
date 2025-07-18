@@ -5,35 +5,12 @@ import { IconDownload, IconShare, IconX } from "@tabler/icons-react"
 import { FC, useEffect, useState } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
-import html2canvas from "html2canvas"
 import { toast } from "sonner"
 
 interface ChatShareDialogProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   selectedMessage?: Tables<"messages">
-}
-
-// 获取当天使用统计
-const getTodayUsageStats = async () => {
-  try {
-    const response = await fetch("/api/points")
-    if (response.ok) {
-      const data = await response.json()
-      // 这里可以根据实际需求返回使用统计
-      return {
-        totalCost: Math.random() * 0.1, // 模拟费用
-        models: ["GPT-4", "Claude-3", "Gemini Pro"]
-      }
-    }
-  } catch (error) {
-    console.error("Error fetching usage stats:", error)
-  }
-
-  return {
-    totalCost: 0.05,
-    models: ["GPT-4", "Claude-3"]
-  }
 }
 
 export const ChatShareDialog: FC<ChatShareDialogProps> = ({
@@ -50,157 +27,65 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
 
     setIsGenerating(true)
     try {
-      // 获取当天费用统计
-      const { totalCost, models } = await getTodayUsageStats()
-
-      // 获取聊天消息容器元素（包含所有消息的区域）
-      const messagesContainer = document.querySelector(
-        ".flex.size-full.flex-col.overflow-auto.border-b"
-      ) as HTMLElement
-      if (!messagesContainer) {
-        console.error("Messages container not found")
-        return
+      // 获取用户总消耗金额
+      let totalCost = 0
+      try {
+        const response = await fetch("/api/points/total-usage")
+        if (response.ok) {
+          const data = await response.json()
+          totalCost = data.totalCost || 0
+        }
+      } catch (error) {
+        console.error("Error fetching total usage:", error)
       }
 
-      // 保存原始滚动位置和样式
-      const originalScrollTop = messagesContainer.scrollTop
-      const originalOverflow = messagesContainer.style.overflow
-      const originalHeight = messagesContainer.style.height
-      const originalBg = messagesContainer.style.backgroundColor
-
-      // 临时修改样式以确保捕获所有内容
-      messagesContainer.style.overflow = "visible"
-      messagesContainer.style.height = "auto"
-      messagesContainer.style.backgroundColor = "#fff"
-
-      // 折叠所有 model usage details 元素并隐藏相关容器
-      const detailsElements = messagesContainer.querySelectorAll("details")
-      const modelUsageContainers = messagesContainer.querySelectorAll(
-        ".mt-4.border-t.border-gray-200.pt-4"
-      )
-
-      detailsElements.forEach(detail => {
-        detail.removeAttribute("open")
-        detail.setAttribute("open", "false")
-      })
-
-      // 临时隐藏 model usage 容器
-      modelUsageContainers.forEach(container => {
-        if (container.textContent?.includes("Model Usage")) {
-          ;(container as HTMLElement).style.display = "none"
-        }
-      })
-
-      // 强制触发重新渲染
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // 滚动到顶部以确保捕获所有内容
-      messagesContainer.scrollTop = 0
-
-      // 等待一下让DOM更新
-      await new Promise(resolve => setTimeout(resolve, 300))
-
-      // 使用html2canvas生成整个聊天消息区域的截图
-      const canvas = await html2canvas(messagesContainer, {
-        backgroundColor: null, // 继承容器背景
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        width: messagesContainer.offsetWidth,
-        height: messagesContainer.scrollHeight, // 使用scrollHeight来包含所有内容
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: document.documentElement.offsetWidth,
-        windowHeight: document.documentElement.offsetHeight,
-        foreignObjectRendering: false, // 关闭 foreignObject
-        removeContainer: true,
-        logging: false,
-        ignoreElements: element => {
-          // 忽略一些可能干扰截图的元素
-          return (
-            element.classList.contains("absolute") &&
-            (element.classList.contains("left-4") ||
-              element.classList.contains("right-4"))
-          )
-        }
-      })
-
-      // 恢复原始样式和滚动位置
-      messagesContainer.style.overflow = originalOverflow
-      messagesContainer.style.height = originalHeight
-      messagesContainer.style.backgroundColor = originalBg
-      messagesContainer.scrollTop = originalScrollTop
-
-      // 恢复 model usage 容器的显示
-      modelUsageContainers.forEach(container => {
-        if (container.textContent?.includes("Model Usage")) {
-          ;(container as HTMLElement).style.display = ""
-        }
-      })
-
-      // 创建新的canvas来添加费用统计信息
-      const finalCanvas = document.createElement("canvas")
-      const ctx = finalCanvas.getContext("2d")
+      // 创建 canvas 来合成图片和文字
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
       if (!ctx) return
 
-      // 设置最终canvas尺寸（增加底部空间用于统计信息）
-      const padding = 40
-      const statsHeight = 120
-      finalCanvas.width = canvas.width
-      finalCanvas.height = canvas.height + statsHeight + padding
+      // 加载原始图片
+      const img = new Image()
+      img.crossOrigin = "anonymous"
 
-      // 设置背景
-      ctx.fillStyle = "#1a1a1a"
-      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+      img.onload = () => {
+        // 设置 canvas 尺寸
+        canvas.width = img.width
+        canvas.height = img.height
 
-      // 绘制原始截图
-      ctx.drawImage(canvas, 0, 0)
+        // 绘制原始图片
+        ctx.drawImage(img, 0, 0)
 
-      // 绘制分隔线
-      ctx.strokeStyle = "#333333"
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(padding, canvas.height + padding / 2)
-      ctx.lineTo(finalCanvas.width - padding, canvas.height + padding / 2)
-      ctx.stroke()
+        // 添加文字
+        ctx.fillStyle = "#f5b449"
+        ctx.font = "bold 64px Arial"
+        ctx.textAlign = "left"
+        ctx.textBaseline = "top"
 
-      // 绘制费用统计信息
-      ctx.fillStyle = "#ffffff"
-      ctx.font = "bold 24px Arial"
-      ctx.textAlign = "center"
+        // 设置文字位置为 (64, 464)
+        const text = `$${totalCost.toFixed(4)} USD1`
+        const x = 64
+        const y = 464
 
-      // 修改文本，不显示"and others"
-      const modelsText =
-        models.length > 2
-          ? `${models.slice(0, 2).join(" and ")} and ${models[2]}${models.length > 3 ? ` and ${models.length - 3} more` : ""}`
-          : models.join(" and ")
+        // 绘制文字
+        ctx.fillText(text, x, y)
 
-      const statsText = `Today, I used models like ${modelsText} through AgentNet, totaling a consumption of $${totalCost.toFixed(4)} USD1.`
-
-      // 文本换行处理
-      const maxWidth = finalCanvas.width - 2 * padding
-      const words = statsText.split(" ")
-      let line = ""
-      let y = canvas.height + padding + 30
-
-      for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i] + " "
-        const metrics = ctx.measureText(testLine)
-        if (metrics.width > maxWidth && i > 0) {
-          ctx.fillText(line, finalCanvas.width / 2, y)
-          line = words[i] + " "
-          y += 30
-        } else {
-          line = testLine
-        }
+        // 转换为图片URL
+        const imageUrl = canvas.toDataURL("image/jpeg", 0.9)
+        setGeneratedImage(imageUrl)
       }
-      ctx.fillText(line, finalCanvas.width / 2, y)
 
-      // 转换为图片URL
-      const imageUrl = finalCanvas.toDataURL("image/png")
-      setGeneratedImage(imageUrl)
+      img.onerror = () => {
+        console.error("Error loading share image")
+        // 如果图片加载失败，使用原始图片
+        setGeneratedImage("/share.jpg")
+      }
+
+      img.src = "/share.jpg"
     } catch (error) {
       console.error("Error generating share image:", error)
+      // 出错时使用原始图片
+      setGeneratedImage("/share.jpg")
     } finally {
       setIsGenerating(false)
     }
@@ -212,7 +97,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
 
     const link = document.createElement("a")
     link.href = generatedImage
-    link.download = `agentnet-chat-${new Date().toISOString().split("T")[0]}.png`
+    link.download = `agentnet-chat-${new Date().toISOString().split("T")[0]}.jpg`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

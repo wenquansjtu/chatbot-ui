@@ -43,6 +43,29 @@ export default function ChatPage() {
           <div className="absolute right-2 top-2 flex items-center space-x-2">
             <PointsDisplay />
             <UserLogin />
+            <img
+              src="/share.jpg"
+              alt="Share AgentNet"
+              className="size-8 cursor-pointer rounded hover:opacity-50"
+              onClick={async () => {
+                // 获取用户总消耗金额
+                let totalCost = 0
+                try {
+                  const response = await fetch("/api/points/total-usage")
+                  if (response.ok) {
+                    const data = await response.json()
+                    totalCost = data.totalCost || 0
+                  }
+                } catch (error) {
+                  console.error("Error fetching total usage:", error)
+                }
+
+                const text = `Check out AgentNet — a unified settlement and coordination layer for AI Agents! $${totalCost.toFixed(4)} USD1 🤖✨`
+                const url = window.location.href
+                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
+                window.open(twitterUrl, "_blank")
+              }}
+            />
           </div>
 
           <div className="flex grow flex-col items-center justify-center" />
