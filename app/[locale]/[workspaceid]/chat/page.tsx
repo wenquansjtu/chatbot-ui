@@ -45,6 +45,7 @@ export default function ChatPage() {
   // 处理分享按钮点击
   const handleShareClick = () => {
     const lastMessage = getLastAssistantMessage()
+    console.log("Share button clicked", { lastMessage, chatMessages })
     // 如果没有助手消息，使用空消息或默认消息
     setSelectedMessage(lastMessage || undefined)
     setIsShareDialogOpen(true)

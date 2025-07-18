@@ -61,6 +61,21 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
       >
+        {/* 侧边栏切换按钮 */}
+        <Button
+          className="absolute left-2 top-2 z-50 size-8 p-0"
+          variant="ghost"
+          onClick={() => setShowSidebar(!showSidebar)}
+        >
+          <IconChevronCompactRight
+            className={cn(
+              "transition-transform duration-200",
+              showSidebar ? "rotate-180" : "rotate-0"
+            )}
+            size={20}
+          />
+        </Button>
+
         {isDragging ? (
           <div className="flex h-full items-center justify-center bg-black/50 text-2xl text-white">
             drop file here
