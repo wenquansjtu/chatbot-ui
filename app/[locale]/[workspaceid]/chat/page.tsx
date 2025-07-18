@@ -7,9 +7,13 @@ import { Brand } from "@/components/ui/brand"
 import { ChatbotUIContext } from "@/context/context"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { useTheme } from "next-themes"
-import { useContext } from "react"
+import { useContext, useState } from "react"
 import { UserLogin } from "@/components/utility/user-login"
 import { PointsDisplay } from "@/components/utility/points-display"
+import { WithTooltip } from "@/components/ui/with-tooltip"
+import { IconShare } from "@tabler/icons-react"
+import { ChatShareDialog } from "@/components/chat/chat-share-dialog"
+import { Tables } from "@/supabase/types"
 
 export default function ChatPage() {
   useHotkey("o", () => handleNewChat())
@@ -18,10 +22,33 @@ export default function ChatPage() {
   })
 
   const { chatMessages } = useContext(ChatbotUIContext)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [selectedMessage, setSelectedMessage] = useState<
+    Tables<"messages"> | undefined
+  >()
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
 
   const { theme } = useTheme()
+
+  // 获取最后一条助手消息
+  const getLastAssistantMessage = () => {
+    const assistantMessages = chatMessages
+      .filter(item => item.message.role === "assistant")
+      .sort((a, b) => b.message.sequence_number - a.message.sequence_number)
+
+    return assistantMessages.length > 0
+      ? assistantMessages[0].message
+      : undefined
+  }
+
+  // 处理分享按钮点击
+  const handleShareClick = () => {
+    const lastMessage = getLastAssistantMessage()
+    // 如果没有助手消息，使用空消息或默认消息
+    setSelectedMessage(lastMessage || undefined)
+    setIsShareDialogOpen(true)
+  }
 
   return (
     <>
@@ -41,31 +68,23 @@ export default function ChatPage() {
           </div>
 
           <div className="absolute right-2 top-2 flex items-center space-x-2">
+            {/* 分享按钮 - 通用功能，登录即可使用 */}
+            <WithTooltip
+              delayDuration={200}
+              display={<div>Share image</div>}
+              trigger={
+                <div className="mt-1">
+                  <IconShare
+                    className="cursor-pointer hover:opacity-50"
+                    size={24}
+                    onClick={handleShareClick}
+                  />
+                </div>
+              }
+            />
+
             <PointsDisplay />
             <UserLogin />
-            <img
-              src="/share.jpg"
-              alt="Share AgentNet"
-              className="size-8 cursor-pointer rounded hover:opacity-50"
-              onClick={async () => {
-                // 获取用户总消耗金额
-                let totalCost = 0
-                try {
-                  const response = await fetch("/api/points/total-usage")
-                  if (response.ok) {
-                    const data = await response.json()
-                    totalCost = data.totalCost || 0
-                  }
-                } catch (error) {
-                  console.error("Error fetching total usage:", error)
-                }
-
-                const text = `Check out AgentNet — a unified settlement and coordination layer for AI Agents! $${totalCost.toFixed(4)} USD1 🤖✨`
-                const url = window.location.href
-                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
-                window.open(twitterUrl, "_blank")
-              }}
-            />
           </div>
 
           <div className="flex grow flex-col items-center justify-center" />
@@ -77,6 +96,13 @@ export default function ChatPage() {
       ) : (
         <ChatUI />
       )}
+
+      {/* 分享对话框 */}
+      <ChatShareDialog
+        isOpen={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        selectedMessage={selectedMessage}
+      />
     </>
   )
 }

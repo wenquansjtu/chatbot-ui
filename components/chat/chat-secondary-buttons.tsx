@@ -39,26 +39,20 @@ export const ChatSecondaryButtons: FC<ChatSecondaryButtonsProps> = ({}) => {
 
   return (
     <>
-      {selectedChat && (
-        <>
-          {/* 分享按钮 - 只在有助手消息时显示 */}
-          {getLastAssistantMessage() && (
-            <WithTooltip
-              delayDuration={200}
-              display={<div>Share conversation as image</div>}
-              trigger={
-                <div className="mt-1">
-                  <IconShare
-                    className="cursor-pointer hover:opacity-50"
-                    size={24}
-                    onClick={handleShareClick}
-                  />
-                </div>
-              }
+      {/* 分享按钮 - 只在有助手消息时显示 */}
+      <WithTooltip
+        delayDuration={200}
+        display={<div>Share image</div>}
+        trigger={
+          <div className="mt-1">
+            <IconShare
+              className="cursor-pointer hover:opacity-50"
+              size={24}
+              onClick={handleShareClick}
             />
-          )}
-        </>
-      )}
+          </div>
+        }
+      />
 
       {/* 积分显示组件 */}
       <PointsDisplay />
