@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { getAllPointsData } from "@/db/points"
 
 export async function GET() {
   try {
@@ -17,103 +18,27 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user points
-    let { data: pointsData, error: pointsError } = await supabase
-      .from("user_points")
-      .select("*")
-      .eq("user_id", user.id)
-      .single()
+    // 使用新的辅助函数并行获取所有数据
+    const data = await getAllPointsData(user.id, 30)
 
-    // If user doesn't have a points record, create one
-    if (pointsError && pointsError.code === "PGRST116") {
-      const { data: newPointsData, error: insertError } = await supabase
-        .from("user_points")
-        .insert({
-          user_id: user.id,
-          points: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
+    // 创建响应，添加适当的缓存头
+    const response = NextResponse.json(data)
 
-      if (insertError) {
-        console.error("Error creating user points record:", insertError)
-        return NextResponse.json(
-          { error: "Failed to create points record" },
-          { status: 500 }
-        )
-      }
+    // 添加缓存头：缓存30秒，允许过期缓存但会在后台重新验证
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=30, stale-while-revalidate=60"
+    )
 
-      pointsData = newPointsData
-    } else if (pointsError) {
-      console.error("Error fetching user points:", pointsError)
-      return NextResponse.json(
-        { error: "Failed to fetch points" },
-        { status: 500 }
-      )
-    }
-
-    // Get check-in records
-    const { data: checkInData, error: checkInError } = await supabase
-      .from("check_in_records")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("check_in_date", { ascending: false })
-      .limit(30)
-
-    if (checkInError) {
-      console.error("Error fetching check-in records:", checkInError)
-      return NextResponse.json(
-        { error: "Failed to fetch check-in records" },
-        { status: 500 }
-      )
-    }
-
-    // Get daily first conversation records
-    const { data: firstConversationData, error: firstConversationError } =
-      await supabase
-        .from("daily_first_conversation_records")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("conversation_date", { ascending: false })
-        .limit(30)
-
-    if (firstConversationError) {
-      console.error(
-        "Error fetching first conversation records:",
-        firstConversationError
-      )
-      return NextResponse.json(
-        { error: "Failed to fetch first conversation records" },
-        { status: 500 }
-      )
-    }
-
-    // Get image share X records
-    const { data: imageShareData, error: imageShareError } = await supabase
-      .from("image_share_x_records")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("share_date", { ascending: false })
-      .limit(30)
-
-    if (imageShareError) {
-      console.error("Error fetching image share records:", imageShareError)
-      return NextResponse.json(
-        { error: "Failed to fetch image share records" },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({
-      points: pointsData,
-      check_in_records: checkInData || [],
-      first_conversation_records: firstConversationData || [],
-      image_share_records: imageShareData || []
-    })
+    return response
   } catch (error) {
     console.error("Points route error:", error)
+
+    // 根据错误类型返回不同的状态码
+    if (error instanceof Error && error.message.includes("Failed to")) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

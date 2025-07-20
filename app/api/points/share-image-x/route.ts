@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { ensureUserPointsRecord } from "@/db/points"
 
 export async function POST(request: Request) {
   try {
@@ -27,44 +28,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Ensure user has a points record
-    let { data: pointsData, error: pointsError } = await supabase
-      .from("user_points")
-      .select("*")
-      .eq("user_id", user.id)
-      .single()
+    // 确保用户有积分记录（使用新的辅助函数）
+    await ensureUserPointsRecord(user.id)
 
-    if (pointsError && pointsError.code === "PGRST116") {
-      // Create points record if it doesn't exist
-      const { data: newPointsData, error: insertError } = await supabase
-        .from("user_points")
-        .insert({
-          user_id: user.id,
-          points: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (insertError) {
-        console.error("Error creating user points record:", insertError)
-        return NextResponse.json(
-          { error: "Failed to create points record" },
-          { status: 500 }
-        )
-      }
-
-      pointsData = newPointsData
-    } else if (pointsError) {
-      console.error("Error fetching user points:", pointsError)
-      return NextResponse.json(
-        { error: "Failed to fetch points" },
-        { status: 500 }
-      )
-    }
-
-    // Perform image share X bonus
+    // Perform image share X bonus using database function
     const { data, error } = await supabase.rpc("image_share_x_bonus", {
       user_uuid: user.id,
       message_uuid: messageId,
@@ -74,14 +41,20 @@ export async function POST(request: Request) {
     if (error) {
       console.error("Image share X bonus error:", error)
       return NextResponse.json(
-        { error: "Failed to process bonus" },
+        { error: "Failed to process image share bonus" },
         { status: 500 }
       )
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error("Image share X bonus route error:", error)
+    console.error("Image share X route error:", error)
+
+    // 根据错误类型返回不同的响应
+    if (error instanceof Error && error.message.includes("Failed to")) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

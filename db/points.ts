@@ -203,3 +203,65 @@ export async function getImageShareXRecords(userId: string, limit = 30) {
 
   return data
 }
+
+// 新增：确保用户积分记录存在，如果不存在则创建
+export async function ensureUserPointsRecord(userId: string) {
+  const supabase = createClient(cookies())
+
+  // 首先尝试获取现有记录
+  let { data: pointsData, error: pointsError } = await supabase
+    .from("user_points")
+    .select("*")
+    .eq("user_id", userId)
+    .single()
+
+  // 如果记录不存在，创建一个新的
+  if (pointsError && pointsError.code === "PGRST116") {
+    const { data: newPointsData, error: insertError } = await supabase
+      .from("user_points")
+      .insert({
+        user_id: userId,
+        points: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error("Error creating user points record:", insertError)
+      throw new Error("Failed to create points record")
+    }
+
+    return newPointsData
+  } else if (pointsError) {
+    console.error("Error fetching user points:", pointsError)
+    throw new Error("Failed to fetch points")
+  }
+
+  return pointsData
+}
+
+// 新增：并行获取所有积分相关数据
+export async function getAllPointsData(userId: string, recordLimit = 30) {
+  try {
+    // 并行执行所有查询
+    const [pointsData, checkInData, firstConversationData, imageShareData] =
+      await Promise.all([
+        ensureUserPointsRecord(userId),
+        getCheckInRecords(userId, recordLimit),
+        getDailyFirstConversationRecords(userId, recordLimit),
+        getImageShareXRecords(userId, recordLimit)
+      ])
+
+    return {
+      points: pointsData,
+      check_in_records: checkInData || [],
+      first_conversation_records: firstConversationData || [],
+      image_share_records: imageShareData || []
+    }
+  } catch (error) {
+    console.error("Error fetching all points data:", error)
+    throw error
+  }
+}
