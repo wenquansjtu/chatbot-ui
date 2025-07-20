@@ -24,6 +24,8 @@ import { AssistantImage } from "@/types/images/assistant-image"
 import { Tables } from "@/supabase/types"
 import { useRouter } from "next/navigation"
 import { FC, useEffect, useState } from "react"
+import { ethers } from "ethers"
+import { toast } from "sonner"
 
 interface GlobalStateProps {
   children: React.ReactNode
@@ -34,6 +36,11 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
   // PROFILE STORE
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null)
+
+  // 添加MetaMask账户状态
+  const [currentMetaMaskAccount, setCurrentMetaMaskAccount] = useState<
+    string | null
+  >(null)
 
   // ITEMS STORE
   const [assistants, setAssistants] = useState<Tables<"assistants">[]>([])
@@ -130,6 +137,11 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
         const profile = await getProfileByUserId(user.id)
         setProfile(profile)
+
+        // 设置当前MetaMask账户
+        if (profile.wallet_address) {
+          setCurrentMetaMaskAccount(profile.wallet_address.toLowerCase())
+        }
 
         // 跳过用户设置过程，直接进入聊天
         // if (!profile.has_onboarded) {
@@ -228,6 +240,209 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     }
   }
 
+  // 清除所有状态的函数
+  const clearAllStates = () => {
+    // PROFILE STORE
+    setProfile(null)
+    setCurrentMetaMaskAccount(null)
+
+    // ITEMS STORE
+    setAssistants([])
+    setCollections([])
+    setChats([])
+    setFiles([])
+    setFolders([])
+    setModels([])
+    setPresets([])
+    setPrompts([])
+    setTools([])
+    setWorkspaces([])
+
+    // MODELS STORE
+    setEnvKeyMap({})
+    setAvailableHostedModels([])
+    setAvailableLocalModels([])
+    setAvailableOpenRouterModels([])
+
+    // WORKSPACE STORE
+    setSelectedWorkspace(null)
+    setWorkspaceImages([])
+
+    // PRESET STORE
+    setSelectedPreset(null)
+
+    // ASSISTANT STORE
+    setSelectedAssistant(null)
+    setAssistantImages([])
+    setOpenaiAssistants([])
+
+    // PASSIVE CHAT STORE
+    setUserInput("")
+    setChatMessages([])
+    setSelectedChat(null)
+    setChatFileItems([])
+
+    // ACTIVE CHAT STORE
+    setIsGenerating(false)
+    setFirstTokenReceived(false)
+    setAbortController(null)
+
+    // CHAT INPUT COMMAND STORE
+    setIsPromptPickerOpen(false)
+    setSlashCommand("")
+    setIsFilePickerOpen(false)
+    setHashtagCommand("")
+    setIsToolPickerOpen(false)
+    setToolCommand("")
+    setFocusPrompt(false)
+    setFocusFile(false)
+    setFocusTool(false)
+    setFocusAssistant(false)
+    setAtCommand("")
+    setIsAssistantPickerOpen(false)
+
+    // ATTACHMENTS STORE
+    setChatFiles([])
+    setChatImages([])
+    setNewMessageFiles([])
+    setNewMessageImages([])
+    setShowFilesDisplay(false)
+
+    // RETRIEVAL STORE
+    setUseRetrieval(true)
+    setSourceCount(4)
+
+    // TOOL STORE
+    setSelectedTools([])
+    setToolInUse("none")
+  }
+
+  // MetaMask账户切换处理函数
+  const handleAccountChange = async (accounts: string[]) => {
+    console.log("MetaMask accounts changed:", accounts)
+
+    if (accounts.length === 0) {
+      // 用户断开连接
+      console.log("User disconnected from MetaMask")
+      await supabase.auth.signOut()
+      router.push("/login")
+      return
+    }
+
+    const newAccount = accounts[0].toLowerCase()
+
+    if (currentMetaMaskAccount && newAccount !== currentMetaMaskAccount) {
+      console.log(
+        "Account switched from",
+        currentMetaMaskAccount,
+        "to",
+        newAccount
+      )
+
+      // 显示账户切换通知
+      toast.info("检测到MetaMask账户切换，正在切换用户...", {
+        duration: 2000
+      })
+
+      try {
+        // 登出当前用户
+        await supabase.auth.signOut()
+
+        // 清除所有本地状态
+        clearAllStates()
+
+        // 自动使用新账户登录
+        await autoLoginWithNewAccount(newAccount)
+      } catch (error) {
+        console.error("Error handling account change:", error)
+        toast.error("账户切换失败，请手动重新登录")
+        router.push("/login")
+      }
+    }
+  }
+
+  // 自动使用新账户登录
+  const autoLoginWithNewAccount = async (address: string) => {
+    try {
+      if (typeof window.ethereum === "undefined") {
+        router.push("/login")
+        return
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      const signer = provider.getSigner()
+
+      // 创建签名消息
+      const message = `Welcome to AgentNet! Please sign this message to verify your wallet ownership. Timestamp: ${Date.now()}`
+
+      // 签名消息
+      const signature = await signer.signMessage(message)
+
+      // 调用钱包认证API
+      const response = await fetch("/api/auth/wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ address, signature, message })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // 根据是否为新用户使用不同的登录策略
+        if (data.isNewUser) {
+          // 新用户，使用API返回的凭据
+          const { error } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password
+          })
+
+          if (error) {
+            throw error
+          }
+        } else {
+          // 现有用户，使用标准钱包凭据
+          const { error } = await supabase.auth.signInWithPassword({
+            email: `${address.toLowerCase()}@wallet.local`,
+            password: address.toLowerCase() + "_WALLET_2024"
+          })
+
+          if (error) {
+            throw error
+          }
+        }
+
+        // 等待认证状态更新
+        let attempts = 0
+        const maxAttempts = 10
+
+        while (attempts < maxAttempts) {
+          const session = (await supabase.auth.getSession()).data.session
+          if (session) {
+            console.log("Auto-login successful, redirecting...")
+            toast.success("账户切换成功！正在跳转到聊天页面...")
+            router.push(`/${data.workspaceId}/chat`)
+            return
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 300))
+          attempts++
+        }
+
+        // 如果等待超时，仍然跳转
+        toast.success("账户切换成功！正在跳转到聊天页面...")
+        router.push(`/${data.workspaceId}/chat`)
+      } else {
+        throw new Error(data.error || "Auto-login failed")
+      }
+    } catch (error) {
+      console.error("Auto-login error:", error)
+      toast.error("自动登录失败，请手动重新登录")
+      router.push("/login")
+    }
+  }
+
   useEffect(() => {
     ;(async () => {
       try {
@@ -288,21 +503,30 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
           }
         } catch (error: any) {
           console.error("Error in auth state change handler:", error)
-
-          // 使用工具函数处理刷新令牌错误
           await handleRefreshTokenError(error, supabase, router)
         }
       } else if (event === "SIGNED_OUT") {
-        // 用户登出后清除状态
-        setProfile(null)
-        setWorkspaces([])
-        setWorkspaceImages([])
-      } else if (event === "TOKEN_REFRESHED") {
-        console.log("Token refreshed successfully")
+        // 用户登出后清除所有状态
+        clearAllStates()
       }
     })
 
-    return () => subscription.unsubscribe()
+    // 监听MetaMask账户变化
+    let metamaskListener: (() => void) | null = null
+
+    if (typeof window !== "undefined" && window.ethereum) {
+      metamaskListener = () => {
+        window.ethereum.on("accountsChanged", handleAccountChange)
+      }
+      metamaskListener()
+    }
+
+    return () => {
+      subscription.unsubscribe()
+      if (metamaskListener && window.ethereum) {
+        window.ethereum.removeListener("accountsChanged", handleAccountChange)
+      }
+    }
   }, [])
 
   return (
