@@ -94,7 +94,7 @@ BEGIN
         'Home',
         4096,
         'gpt-4-turbo-preview', -- Updated default model
-        'Hello, I''m AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.',
+        'You are AgentNet — a unified settlement and coordination layer for AI Agents. I help bridge the gaps between different models and systems, enabling secure, efficient, and trustworthy collaboration across intelligent services.',
         0.5,
         'My home workspace.',
         'openai',
