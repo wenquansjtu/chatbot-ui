@@ -521,10 +521,26 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       metamaskListener()
     }
 
+    // 监听页面可见性变化，标签页切换回来时刷新页面
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        window.location.reload()
+      }
+    }
+
+    // 添加可见性变化监听器
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange)
+    }
+
     return () => {
       subscription.unsubscribe()
       if (metamaskListener && window.ethereum) {
         window.ethereum.removeListener("accountsChanged", handleAccountChange)
+      }
+      // 清理可见性变化监听器
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange)
       }
     }
   }, [])
