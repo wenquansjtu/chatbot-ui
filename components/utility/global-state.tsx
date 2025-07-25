@@ -485,30 +485,17 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       }
     })()
 
-    // 监听认证状态变化
+    // 监听认证状态变化 - 只处理真正的登出事件
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        try {
-          // 用户登录后重新获取数据
-          const profile = await fetchStartingData()
-
-          if (profile) {
-            const hostedModelRes = await fetchHostedModels(profile)
-            if (hostedModelRes) {
-              setEnvKeyMap(hostedModelRes.envKeyMap)
-              setAvailableHostedModels(hostedModelRes.hostedModels)
-            }
-          }
-        } catch (error: any) {
-          console.error("Error in auth state change handler:", error)
-          await handleRefreshTokenError(error, supabase, router)
-        }
-      } else if (event === "SIGNED_OUT") {
+      // 只处理登出事件，忽略标签页切换时的 SIGNED_IN 事件
+      if (event === "SIGNED_OUT") {
         // 用户登出后清除所有状态
         clearAllStates()
       }
+      // 移除对 SIGNED_IN 事件的处理，避免标签页切换时重复加载数据
+      // 初始数据加载已在 useEffect 开始时处理
     })
 
     // 监听MetaMask账户变化

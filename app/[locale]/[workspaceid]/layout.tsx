@@ -77,18 +77,12 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       }
     })()
 
-    // 监听认证状态变化
+    // 监听认证状态变化 - 只处理真正的登出事件
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        console.log("User signed in, updating workspace data...")
-        setIsAuthenticated(true)
-        if (!dataLoadedRef.current) {
-          await fetchWorkspaceData(workspaceId)
-          dataLoadedRef.current = true
-        }
-      } else if (event === "SIGNED_OUT") {
+      // 只处理登出事件，忽略标签页切换时的 SIGNED_IN 事件
+      if (event === "SIGNED_OUT") {
         console.log("User signed out, clearing workspace data...")
         setIsAuthenticated(false)
         dataLoadedRef.current = false
@@ -106,6 +100,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         setTools([])
         setModels([])
       }
+      // 移除对 SIGNED_IN 事件的处理，避免标签页切换时重复加载数据
     })
 
     return () => subscription.unsubscribe()
