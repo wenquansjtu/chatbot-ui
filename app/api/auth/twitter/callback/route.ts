@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import crypto from "crypto"
@@ -30,9 +30,10 @@ function generateOAuthSignature(
     .digest("base64")
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    // 使用 NextRequest 的 nextUrl 属性替代 request.url
+    const { searchParams } = request.nextUrl
     const oauthToken = searchParams.get("oauth_token")
     const oauthVerifier = searchParams.get("oauth_verifier")
 
