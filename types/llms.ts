@@ -68,6 +68,7 @@ export interface LLM {
   hostedId: string
   platformLink: string
   imageInput: boolean
+  webSearch?: boolean
   pricing?: {
     currency: string
     unit: string

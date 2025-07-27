@@ -5,6 +5,7 @@ import { ServerRuntime } from "next"
 import OpenAI from "openai"
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions.mjs"
 import { generateModelUsage, calculateModelUsage } from "@/lib/utils"
+import { LLM_LIST } from "@/lib/models/llm/llm-list"
 
 export const runtime: ServerRuntime = "edge"
 
@@ -31,6 +32,70 @@ const calculateCost = (
   return inputCost + outputCost
 }
 
+// 检查是否需要网搜的关键词
+const needsWebSearch = (text: string): boolean => {
+  const webSearchKeywords = [
+    "最新",
+    "今天",
+    "现在",
+    "当前",
+    "实时",
+    "最近",
+    "新闻",
+    "股价",
+    "天气",
+    "latest",
+    "today",
+    "now",
+    "current",
+    "real-time",
+    "recent",
+    "news",
+    "weather",
+    "stock"
+  ]
+  return webSearchKeywords.some(keyword =>
+    text.toLowerCase().includes(keyword.toLowerCase())
+  )
+}
+
+// 执行网搜
+const performWebSearch = async (query: string) => {
+  try {
+    // 在服务器端，直接使用localhost
+    const baseUrl =
+      process.env.NODE_ENV === "production"
+        ? process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "https://your-domain.com"
+        : "http://localhost:3000"
+
+    const response = await fetch(`${baseUrl}/api/search/web`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query, num: 3 })
+    })
+
+    if (!response.ok) {
+      console.error(
+        "Web search API response not ok:",
+        response.status,
+        response.statusText
+      )
+      throw new Error("Web search failed")
+    }
+
+    const data = await response.json()
+    console.log("Web search results:", data)
+    return data.results || []
+  } catch (error) {
+    console.error("Web search error:", error)
+    return []
+  }
+}
+
 export async function POST(request: Request) {
   const json = await request.json()
   const { chatSettings, messages } = json as {
@@ -43,6 +108,59 @@ export async function POST(request: Request) {
 
     checkApiKey(profile.openai_api_key, "OpenAI")
 
+    // 检查当前模型是否支持网搜
+    const currentModel = LLM_LIST.find(
+      model => model.modelId === chatSettings.model
+    )
+    const supportsWebSearch = currentModel?.webSearch || false
+
+    console.log("Model check:", {
+      modelId: chatSettings.model,
+      currentModel: currentModel?.modelName,
+      supportsWebSearch
+    })
+
+    // 处理网搜逻辑
+    let processedMessages = [...messages]
+    if (supportsWebSearch && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      const shouldSearch =
+        lastMessage.role === "user" && needsWebSearch(lastMessage.content)
+
+      console.log("Web search check:", {
+        lastMessageRole: lastMessage.role,
+        lastMessageContent: lastMessage.content,
+        needsWebSearch: needsWebSearch(lastMessage.content),
+        shouldSearch
+      })
+
+      if (shouldSearch) {
+        console.log("Performing web search for:", lastMessage.content)
+        // 执行网搜
+        const searchResults = await performWebSearch(lastMessage.content)
+
+        console.log("Search results received:", searchResults.length, "results")
+
+        if (searchResults.length > 0) {
+          // 将搜索结果添加到消息中
+          const searchContext = searchResults
+            .map(
+              (result: any) =>
+                `标题: ${result.title}\n内容: ${result.snippet}\n来源: ${result.url}`
+            )
+            .join("\n\n")
+
+          // 修改最后一条用户消息，添加搜索上下文
+          processedMessages[processedMessages.length - 1] = {
+            ...lastMessage,
+            content: `${lastMessage.content}\n\n[网搜结果]:\n${searchContext}\n\n请基于以上最新信息回答问题。`
+          }
+
+          console.log("Message updated with search context")
+        }
+      }
+    }
+
     const openai = new OpenAI({
       apiKey: profile.openai_api_key || "",
       organization: profile.openai_organization_id
@@ -50,7 +168,7 @@ export async function POST(request: Request) {
 
     const response = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
-      messages: messages as ChatCompletionCreateParamsBase["messages"],
+      messages: processedMessages as ChatCompletionCreateParamsBase["messages"],
       temperature: chatSettings.temperature,
       max_tokens:
         chatSettings.model === "gpt-4-vision-preview" ||

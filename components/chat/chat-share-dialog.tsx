@@ -1,7 +1,13 @@
 "use client"
 
 import { Tables } from "@/supabase/types"
-import { IconDownload, IconShare, IconX } from "@tabler/icons-react"
+import {
+  IconDownload,
+  IconShare,
+  IconX,
+  IconCopy,
+  IconBrandTwitter
+} from "@tabler/icons-react"
 import { FC, useEffect, useState } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
@@ -20,6 +26,8 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
 }) => {
   const [generatedImage, setGeneratedImage] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isCopying, setIsCopying] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
 
   // 生成分享图片
   const generateShareImage = async () => {
@@ -137,39 +145,194 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
     document.body.removeChild(link)
   }
 
-  // 分享到Twitter
-  const shareToTwitter = async () => {
-    if (!generatedImage || !selectedMessage) return
+  // 复制图片到剪贴板
+  const copyImageToClipboard = async () => {
+    if (!generatedImage) {
+      toast.error("没有可复制的图片")
+      return
+    }
 
-    const text = "Check out my conversation with AgentNet! 🤖✨"
-    const url = window.location.href
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
-
-    // 打开Twitter分享页面
-    window.open(twitterUrl, "_blank")
-
-    // 奖励积分
+    setIsCopying(true)
     try {
-      const response = await fetch("/api/points/share-image-x", {
+      // 检查浏览器是否支持剪贴板API
+      if (!navigator.clipboard || !navigator.clipboard.write) {
+        throw new Error("浏览器不支持剪贴板API")
+      }
+
+      // 将base64图片转换为blob
+      const response = await fetch(generatedImage)
+      const blob = await response.blob()
+
+      // 复制到剪贴板
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob
+        })
+      ])
+
+      toast.success("图片已复制到剪贴板！现在可以粘贴到X上了 📋")
+    } catch (error) {
+      console.error("Error copying image to clipboard:", error)
+      toast.error("复制图片失败，请尝试下载图片后手动上传")
+    } finally {
+      setIsCopying(false)
+    }
+  }
+
+  // 分享到Twitter（使用官方API）
+  const shareToTwitter = async () => {
+    if (!generatedImage || !selectedMessage) {
+      toast.error("没有可分享的内容")
+      return
+    }
+
+    setIsSharing(true)
+    try {
+      const text = `我在 ${process.env.NEXT_PUBLIC_APP_NAME || "ChatBot UI"} 上进行了一次精彩的对话！🤖✨\n\n#AI #ChatBot #对话`
+
+      // 调用新的Twitter API端点
+      const response = await fetch("/api/share/twitter", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          messageId: selectedMessage.id,
-          imagePath: selectedMessage.image_paths?.[0] || ""
+          imageData: generatedImage,
+          text: text,
+          messageId: selectedMessage.id
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          // 显示成功提示
-          toast.success(`Shared to X! Earned ${data.points_earned} points! 🎉`)
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        toast.success(
+          `成功分享到X！${result.pointsEarned ? ` 获得 ${result.pointsEarned} 积分！` : ""} 🎉`
+        )
+
+        // 打开推文链接
+        if (result.tweetUrl) {
+          window.open(result.tweetUrl, "_blank")
+        }
+      } else {
+        // 如果API未配置，回退到预览分享方式
+        if (result.error === "Twitter API credentials not configured") {
+          toast.info("Twitter API未配置，尝试预览分享方式")
+          try {
+            await shareViaPreview()
+            return
+          } catch (previewError) {
+            console.error("Preview sharing failed:", previewError)
+            // 最终回退到手动分享
+            await copyImageToClipboard()
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+            window.open(twitterUrl, "_blank")
+          }
+        } else {
+          throw new Error(result.message || result.error || "分享失败")
         }
       }
+    } catch (error: any) {
+      console.error("Error sharing to Twitter:", error)
+      toast.error(error.message || "分享失败，请稍后重试")
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  // 基于 Open Graph 预览的分享方案
+  const shareViaPreview = async () => {
+    try {
+      const text = `我在 ${process.env.NEXT_PUBLIC_APP_NAME || "ChatBot UI"} 上进行了一次精彩的对话！🤖✨\n\n#AI #ChatBot #对话`
+
+      const response = await fetch("/api/share/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          imageData: generatedImage,
+          text: text,
+          messageId: selectedMessage?.id || "unknown"
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // 打开 Twitter 分享页面，使用预览 URL
+        window.open(result.twitterShareUrl, "_blank")
+
+        toast.success("预览分享已准备！Twitter 将显示图片预览卡片")
+      } else {
+        throw new Error(result.error || "预览分享失败")
+      }
     } catch (error) {
-      console.error("Error processing image share bonus:", error)
+      console.error("Preview sharing error:", error)
+      throw error
+    }
+  }
+
+  // 使用Web Share API分享（如果支持）
+  const shareWithWebAPI = async () => {
+    if (!generatedImage || !selectedMessage) {
+      toast.error("没有可分享的图片")
+      return
+    }
+
+    setIsSharing(true)
+    try {
+      // 将base64图片转换为blob
+      const response = await fetch(generatedImage)
+      const blob = await response.blob()
+      const file = new File([blob], "agentnet-chat.jpg", { type: "image/jpeg" })
+
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        await navigator.share({
+          title: "AgentNet Chat",
+          text: "Check out my conversation with AgentNet! 🤖✨",
+          url: window.location.href,
+          files: [file]
+        })
+
+        // 奖励积分
+        try {
+          const response = await fetch("/api/points/share-image-x", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              messageId: selectedMessage.id,
+              imagePath: selectedMessage.image_paths?.[0] || ""
+            })
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success) {
+              toast.success(
+                `Shared successfully! Earned ${data.points_earned} points! 🎉`
+              )
+            }
+          }
+        } catch (error) {
+          console.error("Error processing image share bonus:", error)
+        }
+      } else {
+        // 如果不支持Web Share API，回退到复制图片
+        await copyImageToClipboard()
+        toast.info("请手动将图片粘贴到您想要分享的平台上")
+      }
+    } catch (error) {
+      console.error("Error sharing with Web API:", error)
+      toast.error("分享失败，请尝试下载图片后手动分享")
+    } finally {
+      setIsSharing(false)
     }
   }
 
@@ -215,21 +378,40 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
                 />
               </div>
 
-              <div className="flex justify-center gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   onClick={downloadImage}
-                  className="flex items-center gap-2"
-                >
-                  <IconDownload className="size-4" />
-                  Download
-                </Button>
-                <Button
-                  onClick={shareToTwitter}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
+                  <IconDownload className="size-4" />
+                  下载图片
+                </Button>
+                <Button
+                  onClick={copyImageToClipboard}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={isCopying || isSharing}
+                >
+                  <IconCopy className="size-4" />
+                  {isCopying ? "复制中..." : "复制图片"}
+                </Button>
+                <Button
+                  onClick={shareToTwitter}
+                  className="flex items-center gap-2 bg-black text-white hover:bg-gray-800"
+                  disabled={isCopying || isSharing}
+                >
+                  <IconBrandTwitter className="size-4" />
+                  {isSharing ? "分享中..." : "分享到 X"}
+                </Button>
+                <Button
+                  onClick={shareWithWebAPI}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={isCopying || isSharing}
+                >
                   <IconShare className="size-4" />
-                  Share to X
+                  {isSharing ? "分享中..." : "通用分享"}
                 </Button>
               </div>
             </div>
