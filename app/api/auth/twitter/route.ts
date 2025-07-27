@@ -11,6 +11,10 @@ export async function GET(request: Request) {
 
     if (action === "request_token") {
       // 检查环境变量
+      if (!process.env.TWITTER_API_KEY || !process.env.TWITTER_API_SECRET) {
+        throw new Error("Twitter API credentials not configured")
+      }
+
       console.log("🔍 检查环境变量:")
       console.log(
         "TWITTER_API_KEY:",
@@ -26,14 +30,14 @@ export async function GET(request: Request) {
       const requestTokenUrl = "https://api.twitter.com/oauth/request_token"
       const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/twitter/callback`
 
+      // 生成OAuth参数
       const oauthParams = {
         oauth_callback: callbackUrl,
-        oauth_consumer_key: process.env.TWITTER_API_KEY!,
+        oauth_consumer_key: process.env.TWITTER_API_KEY,
         oauth_nonce: crypto.randomBytes(16).toString("hex"),
         oauth_signature_method: "HMAC-SHA1",
         oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-        oauth_version: "1.0",
-        oauth_signature: "" // 先设置为空字符串
+        oauth_version: "1.0"
       }
 
       console.log("📝 OAuth参数:", oauthParams)
@@ -43,19 +47,26 @@ export async function GET(request: Request) {
         "POST",
         requestTokenUrl,
         oauthParams,
-        process.env.TWITTER_API_SECRET!,
-        ""
+        process.env.TWITTER_API_SECRET,
+        "" // 请求令牌阶段token secret为空
       )
-      oauthParams.oauth_signature = signature
 
+      // 添加签名到参数中
+      const finalParams = {
+        ...oauthParams,
+        oauth_signature: signature
+      }
+
+      // 构建Authorization头
       const authHeader =
         "OAuth " +
-        Object.entries(oauthParams)
+        Object.entries(finalParams)
           .map(([key, value]) => `${key}="${encodeURIComponent(value)}"`)
           .join(", ")
 
       console.log("🔐 Authorization Header:", authHeader)
 
+      // 发送请求
       const response = await fetch(requestTokenUrl, {
         method: "POST",
         headers: {
@@ -93,7 +104,6 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("❌ Twitter OAuth详细错误:", error)
 
-    // 安全地获取错误消息
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error"
 
