@@ -30,12 +30,15 @@ function generateOAuthSignature(
     .digest("base64")
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    // 使用 NextRequest 的 nextUrl 属性替代 request.url
-    const { searchParams } = request.nextUrl
-    const oauthToken = searchParams.get("oauth_token")
-    const oauthVerifier = searchParams.get("oauth_verifier")
+    // 从headers中获取完整URL，避免直接使用request.url
+    const url = new URL(
+      request.url || "",
+      `http://${request.headers.get("host") || "localhost"}`
+    )
+    const oauthToken = url.searchParams.get("oauth_token")
+    const oauthVerifier = url.searchParams.get("oauth_verifier")
 
     if (!oauthToken || !oauthVerifier) {
       // 返回HTML页面，通过postMessage通知父窗口认证失败
