@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import crypto from "crypto"
 
+// 添加这行配置，强制动态渲染
+export const dynamic = "force-dynamic"
+
 // OAuth签名生成函数
 function generateOAuthSignature(
   method: string,
@@ -32,13 +35,10 @@ function generateOAuthSignature(
 
 export async function GET(request: Request) {
   try {
-    // 从headers中获取完整URL，避免直接使用request.url
-    const url = new URL(
-      request.url || "",
-      `http://${request.headers.get("host") || "localhost"}`
-    )
-    const oauthToken = url.searchParams.get("oauth_token")
-    const oauthVerifier = url.searchParams.get("oauth_verifier")
+    // 现在可以安全地使用request.url
+    const { searchParams } = new URL(request.url)
+    const oauthToken = searchParams.get("oauth_token")
+    const oauthVerifier = searchParams.get("oauth_verifier")
 
     if (!oauthToken || !oauthVerifier) {
       // 返回HTML页面，通过postMessage通知父窗口认证失败
