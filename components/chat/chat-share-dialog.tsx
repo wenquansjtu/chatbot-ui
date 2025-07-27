@@ -2,7 +2,7 @@
 
 import { Tables } from "@/supabase/types"
 import { IconDownload, IconShare, IconX } from "@tabler/icons-react"
-import { FC, useEffect, useState } from "react"
+import { FC, useEffect, useState, useRef } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { toast } from "sonner"
@@ -20,8 +20,11 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
 }) => {
   const [generatedImage, setGeneratedImage] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+  // 在组件顶部添加弹窗引用
+  const authWindowRef = useRef<Window | null>(null)
 
-  // 生成分享图片
+  // 生成分享图片的函数 - 修改为使用静态图片
   const generateShareImage = async () => {
     console.log("generateShareImage called", { selectedMessage, isOpen })
 
@@ -137,41 +140,177 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
     document.body.removeChild(link)
   }
 
-  // 分享到Twitter
-  const shareToTwitter = async () => {
-    if (!generatedImage || !selectedMessage) return
+  // 执行分享的函数
+  const performShare = async (): Promise<boolean> => {
+    if (!generatedImage) {
+      toast.error("图片还未生成完成，请稍等")
+      return false
+    }
 
-    const text = "Check out my conversation with AgentNet! 🤖✨"
-    const url = window.location.href
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
+    setIsSharing(true)
 
-    // 打开Twitter分享页面
-    window.open(twitterUrl, "_blank")
-
-    // 奖励积分
     try {
-      const response = await fetch("/api/points/share-image-x", {
+      const text =
+        "Check out my conversation with AgentNet! 🤖✨ https://test.agentnet.me/"
+
+      const response = await fetch("/api/share/twitter", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          messageId: selectedMessage.id,
-          imagePath: selectedMessage.image_paths?.[0] || ""
+          imageData: generatedImage,
+          text: text,
+          messageId: selectedMessage?.id || "general-share"
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          // 显示成功提示
-          toast.success(`Shared to X! Earned ${data.points_earned} points! 🎉`)
-        }
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        toast.success(
+          `成功分享到您的Twitter账号！获得 ${result.pointsEarned} 积分！🎉`
+        )
+        window.open(result.tweetUrl, "_blank")
+        return true
+      } else {
+        throw new Error(result.error || "分享失败")
       }
     } catch (error) {
-      console.error("Error processing image share bonus:", error)
+      console.error("分享失败:", error)
+      toast.error("分享失败，请稍后重试")
+      return false
+    } finally {
+      setIsSharing(false)
     }
   }
+
+  // 修改shareToTwitter函数
+  const shareToTwitter = async () => {
+    console.log("shareToTwitter called", {
+      generatedImage: !!generatedImage,
+      selectedMessage: !!selectedMessage,
+      generatedImageLength: generatedImage?.length,
+      selectedMessageId: selectedMessage?.id
+    })
+
+    if (!generatedImage) {
+      console.log("No generated image available")
+      toast.error("图片还未生成完成，请稍等")
+      return
+    }
+
+    const text =
+      "Check out my conversation with AgentNet! 🤖✨ https://test.agentnet.me/"
+
+    try {
+      const response = await fetch("/api/share/twitter", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          imageData: generatedImage,
+          text: text,
+          messageId: selectedMessage?.id || "general-share"
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.status === 401 && result.needsAuth) {
+        // 需要Twitter授权
+        toast.info("需要连接您的Twitter账号才能分享")
+
+        // 关闭之前的弹窗（如果存在）
+        if (authWindowRef.current && !authWindowRef.current.closed) {
+          authWindowRef.current.close()
+        }
+
+        // 打开新的授权窗口
+        authWindowRef.current = window.open(
+          result.authUrl,
+          "twitter-auth",
+          "width=600,height=600,scrollbars=yes,resizable=yes"
+        )
+
+        // 监听弹窗关闭（用户手动关闭的情况）
+        const checkClosed = setInterval(() => {
+          if (authWindowRef.current?.closed) {
+            clearInterval(checkClosed)
+            console.log("认证窗口被用户关闭")
+          }
+        }, 1000)
+
+        return
+      }
+
+      if (response.ok && result.success) {
+        toast.success(
+          `成功分享到您的Twitter账号！获得 ${result.pointsEarned} 积分！🎉`
+        )
+        window.open(result.tweetUrl, "_blank")
+
+        // 分享成功后关闭对话框
+        setTimeout(() => {
+          onOpenChange(false)
+        }, 2000)
+      } else {
+        throw new Error(result.error || "分享失败")
+      }
+    } catch (error) {
+      console.error("分享失败:", error)
+      toast.error("分享失败，请稍后重试")
+    }
+  }
+
+  // 监听Twitter认证消息（保持现有的useEffect不变）
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // 验证消息来源
+      if (event.origin !== window.location.origin) {
+        return
+      }
+
+      if (event.data.type === "TWITTER_AUTH_SUCCESS") {
+        console.log("Twitter认证成功，开始自动分享")
+        toast.success(`Twitter账号连接成功！正在分享...`)
+
+        // 关闭认证窗口
+        if (authWindowRef.current && !authWindowRef.current.closed) {
+          authWindowRef.current.close()
+        }
+
+        // 等待一小段时间确保数据库更新完成
+        setTimeout(async () => {
+          const success = await performShare()
+          if (success) {
+            // 分享成功后关闭对话框
+            setTimeout(() => {
+              onOpenChange(false)
+            }, 2000)
+          }
+        }, 1000)
+      } else if (event.data.type === "TWITTER_AUTH_FAILED") {
+        console.log("Twitter认证失败")
+        toast.error("Twitter账号连接失败，请重试")
+
+        // 关闭认证窗口
+        if (authWindowRef.current && !authWindowRef.current.closed) {
+          authWindowRef.current.close()
+        }
+      }
+    }
+
+    window.addEventListener("message", handleMessage)
+    return () => {
+      window.removeEventListener("message", handleMessage)
+      // 清理：组件卸载时关闭弹窗
+      if (authWindowRef.current && !authWindowRef.current.closed) {
+        authWindowRef.current.close()
+      }
+    }
+  }, [generatedImage, selectedMessage, onOpenChange])
 
   // 当对话框打开时生成图片
   useEffect(() => {
@@ -186,6 +325,15 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
       generateShareImage()
     }
   }, [isOpen, selectedMessage])
+
+  // 清理授权窗口
+  useEffect(() => {
+    return () => {
+      if (authWindowRef.current && !authWindowRef.current.closed) {
+        authWindowRef.current.close()
+      }
+    }
+  }, [])
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -227,9 +375,10 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
                   onClick={shareToTwitter}
                   variant="outline"
                   className="flex items-center gap-2"
+                  disabled={isSharing}
                 >
                   <IconShare className="size-4" />
-                  Share to X
+                  {isSharing ? "Sharing..." : "Share to X"}
                 </Button>
               </div>
             </div>
