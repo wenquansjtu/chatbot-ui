@@ -142,7 +142,8 @@ async function uploadImageToTwitter(imageData: string, credentials: any) {
     oauth_signature_method: "HMAC-SHA1",
     oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
     oauth_token: credentials.accessToken,
-    oauth_version: "1.0"
+    oauth_version: "1.0",
+    oauth_signature: "" // 先设置为空字符串
   }
 
   // 生成OAuth签名
@@ -196,7 +197,8 @@ async function postTweetWithMedia(
     oauth_signature_method: "HMAC-SHA1",
     oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
     oauth_token: credentials.accessToken,
-    oauth_version: "1.0"
+    oauth_version: "1.0",
+    oauth_signature: "" // 先设置为空字符串
   }
 
   // 生成OAuth签名

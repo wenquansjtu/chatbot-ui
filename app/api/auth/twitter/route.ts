@@ -32,7 +32,8 @@ export async function GET(request: Request) {
         oauth_nonce: crypto.randomBytes(16).toString("hex"),
         oauth_signature_method: "HMAC-SHA1",
         oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-        oauth_version: "1.0"
+        oauth_version: "1.0",
+        oauth_signature: "" // 先设置为空字符串
       }
 
       console.log("📝 OAuth参数:", oauthParams)
@@ -91,8 +92,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 })
   } catch (error) {
     console.error("❌ Twitter OAuth详细错误:", error)
+
+    // 安全地获取错误消息
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error"
+
     return NextResponse.json(
-      { error: "OAuth failed", details: error.message },
+      { error: "OAuth failed", details: errorMessage },
       { status: 500 }
     )
   }

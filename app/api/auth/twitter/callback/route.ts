@@ -79,7 +79,8 @@ export async function GET(request: Request) {
       oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
       oauth_token: oauthToken,
       oauth_verifier: oauthVerifier,
-      oauth_version: "1.0"
+      oauth_version: "1.0",
+      oauth_signature: "" // 先设置为空字符串
     }
 
     // 生成签名
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
       process.env.TWITTER_API_SECRET!,
       ""
     )
-    oauthParams.oauth_signature = signature
+    oauthParams.oauth_signature = signature // 现在可以正常赋值
 
     const authHeader =
       "OAuth " +
@@ -241,6 +242,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Twitter callback error:", error)
 
+    // 安全地获取错误消息
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error"
+
     // 返回HTML页面，通过postMessage通知父窗口认证失败
     return new NextResponse(
       `
@@ -254,7 +259,7 @@ export async function GET(request: Request) {
           if (window.opener) {
             window.opener.postMessage({
               type: 'TWITTER_AUTH_FAILED',
-              error: 'Server error: ${error.message}'
+              error: 'Server error: ${errorMessage}'
             }, window.location.origin);
             window.close();
           } else {
