@@ -32,31 +32,57 @@ const calculateCost = (
   return inputCost + outputCost
 }
 
-// 检查是否需要网搜的关键词
-const needsWebSearch = (text: string): boolean => {
-  const webSearchKeywords = [
-    "最新",
-    "今天",
-    "现在",
-    "当前",
-    "实时",
-    "最近",
-    "新闻",
-    "股价",
-    "天气",
-    "latest",
-    "today",
-    "now",
-    "current",
-    "real-time",
-    "recent",
-    "news",
-    "weather",
-    "stock"
-  ]
-  return webSearchKeywords.some(keyword =>
-    text.toLowerCase().includes(keyword.toLowerCase())
-  )
+// 使用模型判断是否需要网搜
+const needsWebSearch = async (
+  text: string,
+  openaiClient: OpenAI
+): Promise<boolean> => {
+  try {
+    const prompt = `请判断以下用户问题是否需要获取实时信息或最新数据来回答。
+
+用户问题："${text}"
+
+如果需要实时信息（如当前时间、最新新闻、股价、天气、实时数据等），请回答"YES"。
+如果不需要实时信息（如一般知识问答、编程问题、历史信息等），请回答"NO"。
+
+只回答YES或NO，不要其他内容。`
+
+    const response = await openaiClient.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0,
+      max_tokens: 10
+    })
+
+    const result = response.choices[0]?.message?.content?.trim().toUpperCase()
+    return result === "YES"
+  } catch (error) {
+    console.error("Error in AI web search detection:", error)
+    // 如果AI判断失败，回退到关键词匹配
+    const webSearchKeywords = [
+      "最新",
+      "今天",
+      "现在",
+      "当前",
+      "实时",
+      "最近",
+      "新闻",
+      "股价",
+      "天气",
+      "latest",
+      "today",
+      "now",
+      "current",
+      "real-time",
+      "recent",
+      "news",
+      "weather",
+      "stock"
+    ]
+    return webSearchKeywords.some(keyword =>
+      text.toLowerCase().includes(keyword.toLowerCase())
+    )
+  }
 }
 
 // 执行网搜
@@ -75,7 +101,7 @@ const performWebSearch = async (query: string) => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ query, num: 3 })
+      body: JSON.stringify({ query, num: 10 }) // 从3增加到8
     })
 
     if (!response.ok) {
@@ -105,8 +131,12 @@ export async function POST(request: Request) {
 
   try {
     const profile = await getServerProfile()
-
     checkApiKey(profile.openai_api_key, "OpenAI")
+
+    const openai = new OpenAI({
+      apiKey: profile.openai_api_key || "",
+      organization: profile.openai_organization_id
+    })
 
     // 检查当前模型是否支持网搜
     const currentModel = LLM_LIST.find(
@@ -124,18 +154,19 @@ export async function POST(request: Request) {
     let processedMessages = [...messages]
     if (supportsWebSearch && messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
+      // 使用AI模型判断是否需要搜网
       const shouldSearch =
-        lastMessage.role === "user" && needsWebSearch(lastMessage.content)
+        lastMessage.role === "user" &&
+        (await needsWebSearch(lastMessage.content, openai))
 
       console.log("Web search check:", {
         lastMessageRole: lastMessage.role,
         lastMessageContent: lastMessage.content,
-        needsWebSearch: needsWebSearch(lastMessage.content),
-        shouldSearch
+        aiDecision: shouldSearch
       })
 
       if (shouldSearch) {
-        console.log("Performing web search for:", lastMessage.content)
+        console.log("AI determined web search needed for:", lastMessage.content)
         // 执行网搜
         const searchResults = await performWebSearch(lastMessage.content)
 
@@ -160,11 +191,6 @@ export async function POST(request: Request) {
         }
       }
     }
-
-    const openai = new OpenAI({
-      apiKey: profile.openai_api_key || "",
-      organization: profile.openai_organization_id
-    })
 
     const response = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
