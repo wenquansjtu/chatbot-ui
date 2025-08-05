@@ -17,7 +17,8 @@ export async function POST(request: Request) {
     }
 
     // 检查是否有 SerpAPI 密钥
-    const serpApiKey = process.env.SERPAPI_API_KEY
+    const serpApiKey =
+      "6d50139ef8032122fd5a9d72c5e316733919cf50c21d601546e0f08e06088497"
 
     if (!serpApiKey) {
       return NextResponse.json(
@@ -43,6 +44,12 @@ export async function POST(request: Request) {
     const response = await fetch(searchUrl)
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error("SerpAPI Error Details:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      })
       throw new Error(
         `SerpAPI request failed: ${response.status} ${response.statusText}`
       )

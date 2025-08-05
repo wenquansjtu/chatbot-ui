@@ -485,17 +485,31 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       }
     })()
 
-    // 监听认证状态变化 - 只处理真正的登出事件
+    // 监听认证状态变化
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // 只处理登出事件，忽略标签页切换时的 SIGNED_IN 事件
+      console.log("Auth state changed:", event, session?.user?.id)
+
       if (event === "SIGNED_OUT") {
         // 用户登出后清除所有状态
         clearAllStates()
+      } else if (event === "SIGNED_IN" && session?.user) {
+        // 用户登录后更新profile状态
+        try {
+          const profile = await getProfileByUserId(session.user.id)
+          setProfile(profile)
+
+          // 设置当前MetaMask账户
+          if (profile.wallet_address) {
+            setCurrentMetaMaskAccount(profile.wallet_address.toLowerCase())
+          }
+
+          console.log("Profile updated after sign in:", profile)
+        } catch (error) {
+          console.error("Error updating profile after sign in:", error)
+        }
       }
-      // 移除对 SIGNED_IN 事件的处理，避免标签页切换时重复加载数据
-      // 初始数据加载已在 useEffect 开始时处理
     })
 
     // 监听MetaMask账户变化
