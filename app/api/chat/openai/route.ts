@@ -92,9 +92,9 @@ const performWebSearch = async (query: string) => {
     const baseUrl =
       process.env.NODE_ENV === "production"
         ? process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : "https://your-domain.com"
-        : "http://localhost:3000"
+          ? `https://test.agentnet.me`
+          : "https://test.agentnet.me"
+        : "https://test.agentnet.me"
 
     const response = await fetch(`${baseUrl}/api/search/web`, {
       method: "POST",

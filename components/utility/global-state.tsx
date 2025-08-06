@@ -494,21 +494,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       if (event === "SIGNED_OUT") {
         // 用户登出后清除所有状态
         clearAllStates()
-      } else if (event === "SIGNED_IN" && session?.user) {
-        // 用户登录后更新profile状态
-        try {
-          const profile = await getProfileByUserId(session.user.id)
-          setProfile(profile)
-
-          // 设置当前MetaMask账户
-          if (profile.wallet_address) {
-            setCurrentMetaMaskAccount(profile.wallet_address.toLowerCase())
-          }
-
-          console.log("Profile updated after sign in:", profile)
-        } catch (error) {
-          console.error("Error updating profile after sign in:", error)
-        }
       }
     })
 
