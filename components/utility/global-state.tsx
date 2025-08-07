@@ -491,9 +491,46 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.id)
 
-      if (event === "SIGNED_OUT") {
-        // 用户登出后清除所有状态
+      if (event === "SIGNED_OUT" && session?.user) {
         clearAllStates()
+        await supabase.auth.updateUser({
+          data: {
+            login: false
+          }
+        })
+      } else if (
+        event === "SIGNED_IN" &&
+        session?.user &&
+        (!session.user.user_metadata?.login ||
+          session.user.user_metadata.login === false)
+      ) {
+        // 检查是否已经是登录状态，如果已登录则不处理
+        console.log("profile login", profile, session)
+        if (profile) {
+          console.log("User already logged in, skipping profile update")
+          return
+        }
+
+        // 用户登录后更新profile状态（仅在未登录状态下处理）
+        try {
+          const profile = await getProfileByUserId(session.user.id)
+          setProfile(profile)
+          console.log("profile add", profile)
+          await supabase.auth.updateUser({
+            data: {
+              login: true
+            }
+          })
+
+          // 设置当前MetaMask账户
+          if (profile.wallet_address) {
+            setCurrentMetaMaskAccount(profile.wallet_address.toLowerCase())
+          }
+
+          console.log("Profile updated after sign in:", profile)
+        } catch (error) {
+          console.error("Error updating profile after sign in:", error)
+        }
       }
     })
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { Tables } from "@/supabase/types"
+import { usePointsRefresh } from "@/lib/hooks/use-points-refresh"
 import { IconDownload, IconShare, IconX } from "@tabler/icons-react"
 import { FC, useEffect, useState, useRef } from "react"
 import { Button } from "../ui/button"
@@ -18,6 +19,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
   onOpenChange,
   selectedMessage
 }) => {
+  const { refreshPointsAndNotify } = usePointsRefresh()
   const [generatedImage, setGeneratedImage] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -171,6 +173,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
         toast.success(
           `成功分享到您的Twitter账号！获得 ${result.pointsEarned} 积分！🎉`
         )
+        await refreshPointsAndNotify()
         window.open(result.tweetUrl, "_blank")
         return true
       } else {
@@ -249,6 +252,7 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
         toast.success(
           `成功分享到您的Twitter账号！获得 ${result.pointsEarned} 积分！🎉`
         )
+        await refreshPointsAndNotify()
         window.open(result.tweetUrl, "_blank")
 
         // 分享成功后关闭对话框
