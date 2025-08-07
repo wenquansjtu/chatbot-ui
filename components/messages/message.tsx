@@ -192,7 +192,6 @@ export const Message: FC<MessageProps> = ({
   const processedModelUsage = (() => {
     if (Array.isArray(modelUsage) && modelUsage.length > 0) {
       const firstUsage = modelUsage[0]
-      console.log("First usage object:", firstUsage)
 
       // Check if API provided distributed models
       if (
@@ -201,10 +200,6 @@ export const Message: FC<MessageProps> = ({
         "distributedModels" in firstUsage &&
         Array.isArray((firstUsage as any).distributedModels)
       ) {
-        console.log(
-          "Found distributedModels:",
-          (firstUsage as any).distributedModels
-        )
         return (firstUsage as any).distributedModels
       }
 
@@ -217,10 +212,6 @@ export const Message: FC<MessageProps> = ({
           "distributedModels" in usage &&
           Array.isArray((usage as any).distributedModels)
         ) {
-          console.log(
-            "Found distributedModels in usage:",
-            (usage as any).distributedModels
-          )
           return (usage as any).distributedModels
         }
       }
@@ -233,20 +224,15 @@ export const Message: FC<MessageProps> = ({
             parsed.distributedModels &&
             Array.isArray(parsed.distributedModels)
           ) {
-            console.log(
-              "Found distributedModels in parsed string:",
-              parsed.distributedModels
-            )
             return parsed.distributedModels
           }
         } catch (e) {
-          console.log("Failed to parse usage string:", e)
+          // Silent error handling
         }
       }
     }
 
     // If no distributed models found, return empty array
-    console.log("No distributedModels found")
     return []
   })()
 
@@ -263,13 +249,6 @@ export const Message: FC<MessageProps> = ({
   // Show model usage for assistant messages that have usage data
   const shouldShowModelUsage =
     message.role === "assistant" && processedModelUsage.length > 0
-
-  // Debug logging
-  console.log("Message ID:", message.id)
-  console.log("Message role:", message.role)
-  console.log("Original model_usage:", message.model_usage)
-  console.log("Processed modelUsage:", processedModelUsage)
-  console.log("Should show model usage:", shouldShowModelUsage)
 
   return (
     <div

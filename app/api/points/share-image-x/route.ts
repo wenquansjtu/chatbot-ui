@@ -18,24 +18,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get request body
-    const { messageId, imagePath } = await request.json()
-
-    if (!messageId) {
-      return NextResponse.json(
-        { error: "Message ID is required" },
-        { status: 400 }
-      )
-    }
-
     // 确保用户有积分记录（使用新的辅助函数）
     await ensureUserPointsRecord(user.id)
 
     // Perform image share X bonus using database function
     const { data, error } = await supabase.rpc("image_share_x_bonus", {
       user_uuid: user.id,
-      message_uuid: messageId,
-      image_path: imagePath || ""
+      message_uuid: "02c3e7c5-fa4b-45e6-a5c8-5564a8b52045",
+      image_path: ""
     })
 
     if (error) {

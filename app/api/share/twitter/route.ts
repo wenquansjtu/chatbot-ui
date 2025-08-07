@@ -65,17 +65,19 @@ export async function POST(request: Request) {
 
       // 步骤3: 奖励积分
       console.log("🏆 开始奖励积分...")
-      if (messageId && messageId !== "general-share") {
-        const pointsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_SITE_URL}/api/points/share-image-x`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messageId })
-          }
-        )
-        console.log("✅ 积分奖励结果:", { status: pointsResponse.status })
-      }
+      const pointsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/points/share-image-x`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: cookieStore.toString()
+          },
+
+          body: JSON.stringify({})
+        }
+      )
+      console.log("✅ 积分奖励结果:", { status: pointsResponse.status })
 
       console.log("🎉 Twitter分享流程完成")
 
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
         success: true,
         tweetId,
         tweetUrl: `https://twitter.com/${twitterAuth.screen_name}/status/${tweetId}`,
-        pointsEarned: messageId !== "general-share" ? 200 : 100
+        pointsEarned: 200
       })
     } catch (error: any) {
       console.error("Twitter API error:", error)

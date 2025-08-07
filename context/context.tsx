@@ -14,6 +14,8 @@ import { Dispatch, SetStateAction, createContext } from "react"
 
 interface ChatbotUIContext {
   // PROFILE STORE
+  userPoints: number
+  setUserPoints: Dispatch<SetStateAction<number>>
   profile: Tables<"profiles"> | null
   setProfile: Dispatch<SetStateAction<Tables<"profiles"> | null>>
 
@@ -140,6 +142,8 @@ interface ChatbotUIContext {
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
   // PROFILE STORE
+  userPoints: 0,
+  setUserPoints: () => {},
   profile: null,
   setProfile: () => {},
 
