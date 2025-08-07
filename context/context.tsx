@@ -16,6 +16,7 @@ interface ChatbotUIContext {
   // PROFILE STORE
   userPoints: number
   setUserPoints: Dispatch<SetStateAction<number>>
+  triggerPointsRefresh: () => void // 新增
   profile: Tables<"profiles"> | null
   setProfile: Dispatch<SetStateAction<Tables<"profiles"> | null>>
 
@@ -144,6 +145,7 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   // PROFILE STORE
   userPoints: 0,
   setUserPoints: () => {},
+  triggerPointsRefresh: () => {}, // 新增
   profile: null,
   setProfile: () => {},
 

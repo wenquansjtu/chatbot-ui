@@ -19,12 +19,12 @@ interface PointsDisplayProps {
 }
 
 export const PointsDisplay: FC<PointsDisplayProps> = ({ className }) => {
-  const { profile } = useContext(ChatbotUIContext)
-  const [points, setPoints] = useState<number>(0)
+  const { profile, userPoints, triggerPointsRefresh } =
+    useContext(ChatbotUIContext) // 使用全局状态
   const [checkInStreak, setCheckInStreak] = useState(0)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  // Fetch user points
+  // Fetch user points - 现在只获取其他数据，积分由全局状态管理
   const fetchPointsData = async () => {
     if (!profile) return
 
@@ -32,8 +32,7 @@ export const PointsDisplay: FC<PointsDisplayProps> = ({ className }) => {
       const response = await fetch("/api/points")
       if (response.ok) {
         const data = await response.json()
-        setPoints(data.points?.points || 0)
-
+        // 不再设置本地points状态，由全局状态管理
         // Calculate consecutive check-in days
         calculateStreak(data.check_in_records || [])
       }
@@ -95,7 +94,10 @@ export const PointsDisplay: FC<PointsDisplayProps> = ({ className }) => {
           className={`flex items-center gap-2 ${className}`}
         >
           <IconCoins className="size-4 text-yellow-500" />
-          <span className="font-medium">{points.toLocaleString()}</span>
+          <span className="font-medium">
+            {userPoints.toLocaleString()}
+          </span>{" "}
+          {/* 使用全局状态 */}
           {checkInStreak > 0 && (
             <div className="flex items-center gap-1">
               <IconTrophy className="size-3 text-blue-500" />
@@ -111,7 +113,8 @@ export const PointsDisplay: FC<PointsDisplayProps> = ({ className }) => {
             Points System
           </DialogTitle>
         </DialogHeader>
-        <CheckInCard onPointsUpdate={fetchPointsData} />
+        <CheckInCard onPointsUpdate={triggerPointsRefresh} />{" "}
+        {/* 使用全局刷新函数 */}
       </DialogContent>
     </Dialog>
   )

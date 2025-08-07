@@ -34,8 +34,12 @@ interface GlobalStateProps {
 export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const router = useRouter()
 
+  // 积分状态
+  const [userPoints, setUserPoints] = useState<number>(0)
+
   // PROFILE STORE
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null)
+  const [pointsRefreshTrigger, setPointsRefreshTrigger] = useState<number>(0) // 新增
 
   // 添加MetaMask账户状态
   const [currentMetaMaskAccount, setCurrentMetaMaskAccount] = useState<
@@ -442,6 +446,40 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       router.push("/login")
     }
   }
+  // 添加积分刷新函数
+  const refreshUserPoints = async () => {
+    if (!profile) return
+
+    try {
+      const response = await fetch("/api/points")
+      if (response.ok) {
+        const data = await response.json()
+        setUserPoints(data.points?.points || 0)
+        console.log("Global points refreshed:", data.points?.points || 0)
+      }
+    } catch (error) {
+      console.error("Error refreshing user points:", error)
+    }
+  }
+
+  // 触发积分刷新的函数
+  const triggerPointsRefresh = () => {
+    setPointsRefreshTrigger(prev => prev + 1)
+  }
+
+  // 在useEffect中初始化积分
+  useEffect(() => {
+    if (profile) {
+      refreshUserPoints()
+    }
+  }, [profile])
+
+  // 监听积分刷新触发器
+  useEffect(() => {
+    if (pointsRefreshTrigger > 0) {
+      refreshUserPoints()
+    }
+  }, [pointsRefreshTrigger])
 
   useEffect(() => {
     ;(async () => {
@@ -555,6 +593,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   return (
     <ChatbotUIContext.Provider
       value={{
+        userPoints,
+        setUserPoints,
+        triggerPointsRefresh, // 新增
         // PROFILE STORE
         profile,
         setProfile,

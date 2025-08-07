@@ -3,7 +3,8 @@
 import { Tables } from "@/supabase/types"
 import { usePointsRefresh } from "@/lib/hooks/use-points-refresh"
 import { IconDownload, IconShare, IconX } from "@tabler/icons-react"
-import { FC, useEffect, useState, useRef } from "react"
+import { ChatbotUIContext } from "@/context/context"
+import { FC, useEffect, useState, useRef, useContext } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { toast } from "sonner"
@@ -19,7 +20,10 @@ export const ChatShareDialog: FC<ChatShareDialogProps> = ({
   onOpenChange,
   selectedMessage
 }) => {
-  const { refreshPointsAndNotify } = usePointsRefresh()
+  const { triggerPointsRefresh } = useContext(ChatbotUIContext) // 使用全局刷新函数
+  const { refreshPointsAndNotify } = usePointsRefresh({
+    onPointsUpdate: triggerPointsRefresh // 传入全局刷新函数
+  })
   const [generatedImage, setGeneratedImage] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
