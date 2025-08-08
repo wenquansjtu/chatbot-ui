@@ -108,14 +108,18 @@ export const CheckInCard: FC<CheckInCardProps> = ({ onPointsUpdate }) => {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          setPoints(data.total_points)
-          setCheckedInToday(true)
           toast.success(
             `Check-in successful! Earned ${data.points_earned} points`
           )
 
-          // Refresh data
-          await fetchPointsData()
+          // 立即更新签到状态，防止重复点击
+          setCheckedInToday(true)
+
+          // 等待一小段时间确保服务器数据已更新
+          setTimeout(async () => {
+            // 重新获取所有最新数据
+            await Promise.all([fetchPointsData(), checkTodayStatus()])
+          }, 500) // 等待500ms确保服务器数据同步
 
           // Notify parent component to refresh
           if (onPointsUpdate) {

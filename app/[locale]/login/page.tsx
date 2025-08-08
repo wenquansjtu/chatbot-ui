@@ -140,7 +140,7 @@ export default function LoginPage() {
               const session = (await supabase.auth.getSession()).data.session
               if (session) {
                 console.log("Authentication confirmed, redirecting...")
-                router.push(`/${data.workspaceId}/chat`)
+                window.location.href = `/${data.workspaceId}/chat`
                 return
               }
 
