@@ -115,13 +115,50 @@ export const CheckInCard: FC<CheckInCardProps> = ({ onPointsUpdate }) => {
           // 立即更新签到状态，防止重复点击
           setCheckedInToday(true)
 
-          // 等待一段时间后再请求最新数据
-          setTimeout(async () => {
-            // 重新获取积分和签到记录数据
-            await fetchPointsData()
-            // 重新检查今日签到状态
-            await checkTodayStatus()
-          }, 2000) // 等待2秒确保服务器数据完全更新
+          // 使用轮询方式检查数据更新
+          const pollForUpdates = async () => {
+            let attempts = 0
+            const maxAttempts = 15 // 最多尝试15次
+            const pollInterval = 1000 // 每1秒轮询一次
+
+            const poll = async () => {
+              attempts++
+              console.log(`轮询第${attempts}次，检查数据更新...`)
+
+              // 获取最新数据
+              await fetchPointsData()
+
+              // 检查今天的签到记录是否已存在
+              const today = new Date().toISOString().split("T")[0] // 格式: "2025-08-08"
+              const todayRecord = checkInRecords.find(record => {
+                // 直接比较日期字符串，API返回的check_in_date已经是"YYYY-MM-DD"格式
+                const recordDate = record.check_in_date.split("T")[0] // 确保只取日期部分
+                return recordDate === today
+              })
+
+              if (todayRecord) {
+                console.log("检测到今天的打卡记录，数据已更新，停止轮询")
+                // 数据已更新，重新检查签到状态确保一致性
+                await checkTodayStatus()
+                return
+              }
+
+              if (attempts >= maxAttempts) {
+                console.log("达到最大轮询次数，停止轮询")
+                // 达到最大尝试次数，最后再尝试一次获取数据
+                await checkTodayStatus()
+                return
+              }
+
+              // 继续轮询
+              setTimeout(poll, pollInterval)
+            }
+
+            // 延迟1秒后开始第一次轮询
+            setTimeout(poll, pollInterval)
+          }
+
+          pollForUpdates()
 
           // Notify parent component to refresh
           if (onPointsUpdate) {
