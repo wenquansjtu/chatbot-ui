@@ -118,7 +118,7 @@ export const CheckInCard: FC<CheckInCardProps> = ({ onPointsUpdate }) => {
           // 使用轮询方式检查数据更新
           const pollForUpdates = async () => {
             let attempts = 0
-            const maxAttempts = 15 // 最多尝试15次
+            const maxAttempts = 3 // 最多尝试15次
             const pollInterval = 1000 // 每1秒轮询一次
 
             const poll = async () => {
