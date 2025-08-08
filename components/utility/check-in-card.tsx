@@ -115,11 +115,13 @@ export const CheckInCard: FC<CheckInCardProps> = ({ onPointsUpdate }) => {
           // 立即更新签到状态，防止重复点击
           setCheckedInToday(true)
 
-          // 等待更长时间确保服务器数据已更新
+          // 等待一段时间后再请求最新数据
           setTimeout(async () => {
-            // 重新获取所有最新数据
-            await Promise.all([fetchPointsData(), checkTodayStatus()])
-          }, 1500) // 延迟增加到1500ms确保服务器数据同步
+            // 重新获取积分和签到记录数据
+            await fetchPointsData()
+            // 重新检查今日签到状态
+            await checkTodayStatus()
+          }, 2000) // 等待2秒确保服务器数据完全更新
 
           // Notify parent component to refresh
           if (onPointsUpdate) {
