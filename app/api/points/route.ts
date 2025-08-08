@@ -21,14 +21,16 @@ export async function GET() {
     // 使用新的辅助函数并行获取所有数据
     const data = await getAllPointsData(user.id, 30)
 
-    // 创建响应，添加适当的缓存头
+    // 创建响应，禁用缓存
     const response = NextResponse.json(data)
 
-    // 添加缓存头：缓存30秒，允许过期缓存但会在后台重新验证
+    // 禁用所有缓存
     response.headers.set(
       "Cache-Control",
-      "public, s-maxage=30, stale-while-revalidate=60"
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
     )
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
 
     return response
   } catch (error) {
